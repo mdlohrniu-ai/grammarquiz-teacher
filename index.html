@@ -1006,6 +1006,7 @@ body {
     </div>
     <nav class="app-nav">
       <button class="nav-btn active" onclick="showPanel('units')"     id="nav-units">📋 Units</button>
+      <button class="nav-btn"        onclick="showPanel('grading')"   id="nav-grading">📄 Grading Sheet</button>
       <button class="nav-btn"        onclick="showPanel('test')"      id="nav-test">🎯 Test</button>
       <button class="nav-btn"        onclick="showPanel('preview')"   id="nav-preview">👁 Student View</button>
       <button class="nav-btn"        onclick="showPanel('flags')"     id="nav-flags">🚩 Flags</button>
@@ -1056,6 +1057,27 @@ body {
           <thead id="units-thead"></thead>
           <tbody id="units-tbody"></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- ── GRADING SHEET PANEL ──────────────────────────────────────────────── -->
+    <div id="panel-grading" style="display:none">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Weekly Grading Sheet</div>
+          <div class="panel-sub">Print or download the grading sheet for this week</div>
+        </div>
+        <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="loadGradingSheet()">↺ Refresh</button>
+          <button class="btn btn-ghost btn-sm" onclick="printGradingSheet()">🖨 Print</button>
+          <button class="btn btn-primary" onclick="downloadGradingPDF()">⬇ Download PDF</button>
+        </div>
+      </div>
+      <div id="grading-content">
+        <div class="empty-state">
+          <div class="empty-state-icon">📄</div>
+          Loading grading sheet…
+        </div>
       </div>
     </div>
 
@@ -1360,7 +1382,7 @@ function goSelectClass() {
 }
 
 // ── NAV PANELS ────────────────────────────────────────────────────────────────
-const PANELS = ['units','test','preview','flags','grades','qb'];
+const PANELS = ['units','grading','test','preview','flags','grades','qb'];
 
 function showPanel(name) {
   PANELS.forEach(p => {
@@ -1372,6 +1394,7 @@ function showPanel(name) {
   const fixedBar = document.getElementById('fixed-scroll-bar');
   if (fixedBar) fixedBar.style.display = name === 'units' ? 'block' : 'none';
 
+  if (name === 'grading')  loadGradingSheet();
   if (name === 'test')     loadTestControl();
   if (name === 'preview')  loadPreviewStudentList();
   if (name === 'flags')    loadWeeks();
@@ -1439,7 +1462,7 @@ function renderUnitsTable(data) {
   const currentWeekIdx = data.weekNum ? Number(data.weekNum) - 1 : -1;
 
   let thHtml = '<tr>' +
-    '<th>Student #</th><th>Name (JPN)</th><th>Name (ENG)</th><th>Level</th>';
+    '<th>Student #</th><th>Name (JPN)</th><th>Name (ENG)</th>';
 
   data.weekHeaders.forEach((wh, idx) => {
     const isCurrent = idx === currentWeekIdx;
@@ -1454,11 +1477,7 @@ function renderUnitsTable(data) {
     const tr = document.createElement('tr');
 
     // Level buttons
-    const levelHtml = `<div class="level-group">
-      <button class="level-btn ${s.basic ? 'active-basic' : ''}" onclick="setLevel(${s.row},'basic')" title="Basic">B</button>
-      <button class="level-btn ${s.inter ? 'active-inter' : ''}" onclick="setLevel(${s.row},'inter')" title="Intermediate">I</button>
-      <button class="level-btn ${s.adv   ? 'active-adv'   : ''}" onclick="setLevel(${s.row},'adv')"   title="Advanced">A</button>
-    </div>`;
+    
 
     // Unit inputs
     let unitCells = '';
@@ -1474,30 +1493,14 @@ function renderUnitsTable(data) {
       `<td style="font-family:'DM Mono',monospace;font-size:0.8rem;color:var(--ink-muted)">${s.num}</td>` +
       `<td style="color:var(--ink-soft);font-size:0.82rem">${s.jpn}</td>` +
       `<td style="font-weight:500">${s.eng}</td>` +
-      `<td>${levelHtml}</td>` +
+      
       unitCells;
 
     tbody.appendChild(tr);
   });
 }
 
-function setLevel(row, level) {
-  // Find the student, update level, rerender that row's buttons
-  const s = mgmtData.students.find(s => s.row === row);
-  if (!s) return;
-  s.basic = level === 'basic';
-  s.inter = level === 'inter';
-  s.adv   = level === 'adv';
-  markDirty();
 
-  // Update button styles in DOM
-  const tr = document.querySelector(`[data-row="${row}"]`)?.closest('tr');
-  if (!tr) return;
-  const btns = tr.querySelectorAll('.level-btn');
-  btns[0].className = `level-btn ${s.basic ? 'active-basic' : ''}`;
-  btns[1].className = `level-btn ${s.inter ? 'active-inter' : ''}`;
-  btns[2].className = `level-btn ${s.adv   ? 'active-adv'   : ''}`;
-}
 
 async function saveUnits() {
   const weekNum = document.getElementById('week-num-input').value;
@@ -2783,6 +2786,99 @@ async function saveQBInstruction(section, insRow, insTab) {
   }
 }
 
+// ── ═══════════════════════════════════════════════════════════════════════════
+// ── GRADING SHEET PANEL ───────────────────────────────────────────────────────
+// ── ═══════════════════════════════════════════════════════════════════════════
+
+let gradingSheetData = null;
+
+async function loadGradingSheet() {
+  setLoading(true);
+  try {
+    const data = await api({ action: 'getGradingSheet' });
+    gradingSheetData = data;
+    renderGradingSheet(data);
+  } catch(e) {
+    document.getElementById('grading-content').innerHTML =
+      `<div class="alert alert-error">Failed to load grading sheet: ${e.message}</div>`;
+  } finally {
+    setLoading(false);
+  }
+}
+
+function renderGradingSheet(data) {
+  const content = document.getElementById('grading-content');
+  if (!data.rows || data.rows.length === 0) {
+    content.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📄</div>No grading sheet found. Generate quizzes first.</div>';
+    return;
+  }
+
+  // Render as a clean printable table
+  const headers = data.headers || [];
+  let tableHtml = `
+    <div id="grading-print-area" style="background:white;color:#1a1a1a;border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--border-soft)">
+      <div style="background:#1a4a6b;color:white;padding:1rem 1.5rem;font-family:'Fraunces',serif;font-size:1.2rem;font-weight:400">
+        ${data.title || 'Weekly Grading Sheet'}
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-family:'DM Sans',sans-serif;font-size:0.88rem">
+          <thead>
+            <tr style="background:#e8f0f7">
+              ${headers.map(h => `<th style="padding:0.6rem 0.8rem;text-align:left;border-bottom:2px solid #c0d4e8;font-weight:600;font-size:0.78rem;letter-spacing:0.05em;text-transform:uppercase;color:#2a5c8a;white-space:nowrap">${h}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${data.rows.map((row, idx) => `
+              <tr style="${idx % 2 === 0 ? 'background:#f8f9fa' : 'background:white'}">
+                ${row.map((cell, ci) => {
+                  // Checkmark columns (Bas/Int/Adv) — center align
+                  const isCheck = cell === true || cell === '✓' || cell === true;
+                  const cellVal = cell === true ? '✓' : (cell === false ? '' : (cell ?? ''));
+                  return `<td style="padding:0.55rem 0.8rem;border-bottom:1px solid #eee;${ci >= 3 && ci <= 5 ? 'text-align:center;' : ''}vertical-align:middle">${cellVal}</td>`;
+                }).join('')}
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+
+  content.innerHTML = tableHtml;
+}
+
+function printGradingSheet() {
+  const printArea = document.getElementById('grading-print-area');
+  if (!printArea) { toast('No grading sheet loaded', 'error'); return; }
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html><head>
+    <title>Weekly Grading Sheet</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Fraunces:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+      body { margin: 1cm; font-family: 'DM Sans', sans-serif; }
+      table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+      th { background: #1a4a6b; color: white; padding: 6px 8px; text-align: left; font-size: 8pt; letter-spacing: 0.05em; text-transform: uppercase; }
+      td { padding: 5px 8px; border-bottom: 1px solid #ddd; }
+      tr:nth-child(even) { background: #f5f5f5; }
+      h1 { color: #1a4a6b; font-family: 'Fraunces', serif; font-weight: 400; margin-bottom: 0.5rem; }
+      @media print { body { margin: 0.5cm; } }
+    </style>
+  </head><body>${printArea.outerHTML}<script>window.onload=()=>{window.print();window.close();}<\/script></body></html>`);
+  win.document.close();
+}
+
+async function downloadGradingPDF() {
+  // Use Google Sheets export URL to download the tab as PDF
+  try {
+    const data = await api({ action: 'getGradingSheetPDFUrl' });
+    if (data.url) {
+      window.open(data.url, '_blank');
+    } else {
+      toast('Could not get PDF URL', 'error');
+    }
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
 // ── INIT ──────────────────────────────────────────────────────────────────────
 // If token exists from session, skip login and go to class select or restore class
 (async function init() {
@@ -2798,6 +2894,6 @@ async function saveQBInstruction(section, insRow, insTab) {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v2.3</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v2.4</div>
 </body>
 </html>

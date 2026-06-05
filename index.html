@@ -1233,9 +1233,8 @@ async function api(params, method = 'GET', body = null) {
     if (body.action) allParams.action = body.action;
   }
   const url = API + '?' + new URLSearchParams(allParams).toString();
-  const res = await fetch(url, { redirect: 'follow' });
-  const text = await res.text();
-  const data = JSON.parse(text);
+  const res = await fetch(url);
+  const data = JSON.parse(await res.text());
   if (!data.ok) throw new Error(data.error || 'API error');
   return data;
 }
@@ -1255,9 +1254,8 @@ async function doLogin() {
 
   try {
     const params = new URLSearchParams({ action: 'loginGet', username, password });
-    const res = await fetch(API + '?' + params.toString(), { redirect: 'follow' });
-    const text = await res.text();
-    const data = JSON.parse(text);
+    const res = await fetch(API + '?' + params.toString());
+    const data = JSON.parse(await res.text());
     if (!data.ok) throw new Error(data.error || 'Login failed');
 
     authToken = data.token;
@@ -2035,6 +2033,6 @@ async function saveHomework() {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v0.2</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v0.3</div>
 </body>
 </html>

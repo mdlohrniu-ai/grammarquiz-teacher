@@ -1961,11 +1961,12 @@ async function saveQBEdit(row, unitName, originalQuestion) {
     await api({
       action: 'updateQBQuestion',
       row: searchResult.row,
+      tab: searchResult.tab,
       question: newQ,
       answer: newA
     });
 
-    statusEl.textContent = `✓ Saved to QB (row ${searchResult.row})`;
+    statusEl.textContent = `✓ Saved to QB (${searchResult.tab}, row ${searchResult.row})`;
     statusEl.style.color = 'var(--green)';
   } catch(e) {
     statusEl.textContent = '✗ Error: ' + e.message;
@@ -2151,6 +2152,6 @@ function initStickyScrollbar() {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v0.9</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v1.0</div>
 </body>
 </html>

@@ -955,7 +955,7 @@ body {
 <!-- ── LOGIN SCREEN ─────────────────────────────────────────────────────────── -->
 <div class="screen active" id="login-screen">
   <div class="login-box">
-    <div>
+    <div style="text-align:center">
       <div class="login-logo">Quiz Manager</div>
       <div class="login-title">Teacher<br><em>Portal</em></div>
     </div>
@@ -1125,6 +1125,7 @@ body {
           <button class="preview-mode-btn active" id="preview-mode-quiz" onclick="setPreviewMode('quiz')">Quiz view</button>
           <button class="preview-mode-btn" id="preview-mode-answers" onclick="setPreviewMode('answers')">Answer view</button>
         </div>
+        <span id="preview-results-badge" style="font-size:0.75rem;color:var(--ink-muted)"></span>
       </div>
 
       <div id="preview-content">
@@ -1193,6 +1194,21 @@ body {
         <div>
           <div class="panel-title">Grades</div>
           <div class="panel-sub">Update grades input and export to Moodle</div>
+          <div style="display:flex;gap:0.75rem;align-items:center;margin-top:0.5rem;flex-wrap:wrap;font-size:0.82rem;color:var(--ink-soft)">
+            <span style="font-weight:600">Weights:</span>
+            <label style="display:flex;align-items:center;gap:0.3rem">Practice Q
+              <input type="number" id="w-practiceq" value="30" min="0" max="100" style="width:50px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:0.25rem 0.4rem;font-size:0.82rem;color:var(--accent);text-align:center;outline:none">
+            </label>
+            <label style="display:flex;align-items:center;gap:0.3rem">Flashcard
+              <input type="number" id="w-flashcard" value="30" min="0" max="100" style="width:50px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:0.25rem 0.4rem;font-size:0.82rem;color:var(--accent);text-align:center;outline:none">
+            </label>
+            <label style="display:flex;align-items:center;gap:0.3rem">Quiz New
+              <input type="number" id="w-quiznew" value="20" min="0" max="100" style="width:50px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:0.25rem 0.4rem;font-size:0.82rem;color:var(--accent);text-align:center;outline:none">
+            </label>
+            <label style="display:flex;align-items:center;gap:0.3rem">Quiz Review
+              <input type="number" id="w-quizrev" value="20" min="0" max="100" style="width:50px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:0.25rem 0.4rem;font-size:0.82rem;color:var(--accent);text-align:center;outline:none">
+            </label>
+          </div>
         </div>
         <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
           <select id="grades-week-select" class="field" style="width:120px;margin:0" onchange="loadGradesData()">
@@ -1200,7 +1216,7 @@ body {
           </select>
           <input type="number" id="grades-week-manual" min="1" max="30" placeholder="or type week #"
             style="width:110px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.6rem;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--ink);outline:none;"
-            oninput="document.getElementById('grades-week-select').value=''; gradesWeekOverride=this.value;">
+            oninput="gradesWeekOverride=this.value; document.getElementById('grades-week-select').value='';">
           <button class="btn btn-ghost btn-sm" onclick="doUpdateGradesInput()" id="update-grades-btn">⚙ Update Grades Input</button>
           <button class="btn btn-primary" onclick="doExportGrades()" id="export-grades-btn">📤 Export Grades</button>
         </div>
@@ -1706,6 +1722,7 @@ async function loadPreview() {
     document.getElementById('preview-content').innerHTML =
       '<div class="empty-state"><div class="empty-state-icon">👁</div>Select a student to preview their quiz</div>';
     previewQuestions = null;
+    previewData = null;
     return;
   }
 
@@ -1714,6 +1731,15 @@ async function loadPreview() {
     const data = await api({ action: 'getQuizData', student: num });
     previewQuestions = data.questions;
     previewData = data;
+    previewData.studentResults = null;
+
+    // Also try to fetch submitted results if quiz has been taken
+    try {
+      const week = data.week;
+      const results = await api({ action: 'getStudentResults', student: num, week });
+      if (results.found) previewData.studentResults = results.questions;
+    } catch(e) { /* not submitted yet — that's fine */ }
+
     renderPreview();
   } catch(e) {
     document.getElementById('preview-content').innerHTML =
@@ -1735,6 +1761,13 @@ function renderPreview() {
   if (!qs || qs.length === 0) return;
 
   const showAnswers = previewMode === 'answers';
+  const badge = document.getElementById('preview-results-badge');
+  if (badge) {
+    badge.textContent = previewData.studentResults
+      ? '✓ Submitted — showing student answers'
+      : 'Not yet submitted — showing correct answers';
+    badge.style.color = previewData.studentResults ? 'var(--green)' : 'var(--ink-muted)';
+  }
   let html = `<div class="quiz-render">
     <div class="qr-header">
       <div class="qr-title">Week ${previewData.week} — Grammar Quiz</div>
@@ -1804,7 +1837,14 @@ function renderPreview() {
           <div style="font-size:0.95rem;line-height:1.6;color:#1c1a14;margin-bottom:6px">${formatQPreview(q.question, 'double')}</div>`;
 
       if (showAnswers) {
-        html += renderAnswerBoxes([q, q2], true);
+        // Show student answers if submitted, otherwise show correct answers
+        const sr = previewData.studentResults;
+        if (sr) {
+          const res2 = sr.filter(r => r.question === q.question).slice(0, 2);
+          html += res2.length > 0 ? renderStudentAnswerBoxes(res2, true) : renderAnswerBoxes([q, q2], true);
+        } else {
+          html += renderAnswerBoxes([q, q2], true);
+        }
       } else {
         html += `<div style="display:flex;flex-direction:column;gap:5px">
           <div style="display:flex;align-items:center;gap:6px">
@@ -1825,7 +1865,22 @@ function renderPreview() {
         <div>
           <div style="font-size:0.95rem;line-height:1.6;color:#1c1a14;margin-bottom:6px">${formatQPreview(q.question, 'single')}</div>`;
       if (showAnswers) {
-        html += `<div style="background:#e8f0f7;color:#2a5c8a;padding:0.5rem 0.8rem;border-radius:6px;font-size:0.88rem;font-weight:500">${q.answer}</div>`;
+        const sr = previewData.studentResults;
+        const resRow = sr ? sr.find(r => r.question === q.question) : null;
+        if (resRow) {
+          const bgColor = resRow.result === 'correct' ? '#e6f4ec' : resRow.result === 'half' ? '#fef6e4' : '#faeaea';
+          const borderColor = resRow.result === 'correct' ? '#a3d4b8' : resRow.result === 'half' ? '#f0d080' : '#f0b0b0';
+          const ansColor = resRow.result === 'correct' ? '#2d7a4f' : resRow.result === 'half' ? '#b87a00' : '#b83232';
+          html += `<div style="background:${bgColor};border:1.5px solid ${borderColor};border-radius:6px;padding:0.5rem 0.8rem;font-size:0.88rem;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-weight:500;color:${ansColor}">${resRow.studentAnswer || '(no answer)'}</div>
+              ${resRow.result !== 'correct' ? `<div style="font-size:0.78rem;color:#6b6454">Correct: <span style="color:#2d7a4f;font-weight:500">${resRow.correctAnswer}</span></div>` : ''}
+            </div>
+            <div style="font-size:0.78rem;font-weight:600;color:${ansColor}">${resRow.score > 0 ? '+'+resRow.score+' pt' : '0 pt'}</div>
+          </div>`;
+        } else {
+          html += `<div style="background:#e8f0f7;color:#2a5c8a;padding:0.5rem 0.8rem;border-radius:6px;font-size:0.88rem;font-weight:500">${q.answer}</div>`;
+        }
       } else {
         html += `<div style="height:34px;border:1.5px solid #ddd8cc;border-radius:6px;background:white"></div>`;
       }
@@ -1836,6 +1891,25 @@ function renderPreview() {
 
   html += '</div></div>';
   document.getElementById('preview-content').innerHTML = html;
+}
+
+function renderStudentAnswerBoxes(resultRows, double) {
+  const markers = ['①', '②'];
+  return resultRows.map((r, idx) => {
+    const bgColor = r.result === 'correct' ? '#e6f4ec' : r.result === 'half' ? '#fef6e4' : '#faeaea';
+    const borderColor = r.result === 'correct' ? '#a3d4b8' : r.result === 'half' ? '#f0d080' : '#f0b0b0';
+    const ansColor = r.result === 'correct' ? '#2d7a4f' : r.result === 'half' ? '#b87a00' : '#b83232';
+    return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+      ${double ? `<span style="font-weight:600;color:#2a5c8a">${markers[idx]}</span>` : ''}
+      <div style="flex:1;background:${bgColor};border:1.5px solid ${borderColor};border-radius:6px;padding:0.4rem 0.7rem;font-size:0.85rem;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-weight:500;color:${ansColor}">${r.studentAnswer || '(no answer)'}</div>
+          ${r.result !== 'correct' ? `<div style="font-size:0.75rem;color:#6b6454">Correct: <span style="color:#2d7a4f;font-weight:500">${r.correctAnswer}</span></div>` : ''}
+        </div>
+        <span style="font-size:0.75rem;font-weight:600;color:${ansColor};flex-shrink:0">${r.score > 0 ? '+'+r.score+' pt' : '0 pt'}</span>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function renderAnswerBoxes(qs, double) {
@@ -2339,7 +2413,13 @@ async function doUpdateGradesInput() {
   if (!confirm(`Update Grades Input for Week ${week}? This will apply any approved flag corrections.`)) return;
   setLoading(true);
   try {
-    const result = await api({ action: 'updateGradesInput', week });
+    const weights = {
+      practiceQ: parseInt(document.getElementById('w-practiceq')?.value) || 30,
+      flashcard:  parseInt(document.getElementById('w-flashcard')?.value)  || 30,
+      quizNew:    parseInt(document.getElementById('w-quiznew')?.value)    || 20,
+      quizRev:    parseInt(document.getElementById('w-quizrev')?.value)    || 20
+    };
+    const result = await api({ action: 'updateGradesInput', week, weights: JSON.stringify(weights) });
     toast(`Grades Input updated for Week ${week}${result.corrections > 0 ? ' · ' + result.corrections + ' flag correction(s) applied' : ''}`, 'success');
     await loadGradesData();
   } catch(e) {
@@ -2357,7 +2437,13 @@ async function doExportGrades() {
     // First save any homework changes
     await saveGradesHW(true);
     // Then re-update grades input with latest homework
-    await api({ action: 'updateGradesInput', week });
+    const weights = {
+      practiceQ: parseInt(document.getElementById('w-practiceq')?.value) || 30,
+      flashcard:  parseInt(document.getElementById('w-flashcard')?.value)  || 30,
+      quizNew:    parseInt(document.getElementById('w-quiznew')?.value)    || 20,
+      quizRev:    parseInt(document.getElementById('w-quizrev')?.value)    || 20
+    };
+    await api({ action: 'updateGradesInput', week, weights: JSON.stringify(weights) });
     // Then export
     const result = await api({ action: 'exportGrades', week });
     toast('Exported: ' + result.name, 'success');
@@ -2606,6 +2692,6 @@ async function saveQBInstruction(section, insRow, insTab) {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v1.5</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v1.6</div>
 </body>
 </html>

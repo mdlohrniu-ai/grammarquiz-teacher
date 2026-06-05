@@ -988,11 +988,9 @@ body {
     <div class="class-cards">
       <div class="class-card" onclick="selectClass('EWSI')">
         <div class="class-card-label">EWS I</div>
-        <div class="class-card-sub">Basic level</div>
       </div>
       <div class="class-card" onclick="selectClass('EWSIII')">
         <div class="class-card-label">EWS III</div>
-        <div class="class-card-sub">Advanced level</div>
       </div>
     </div>
     <button class="btn btn-ghost btn-sm" onclick="logout()" style="align-self:center">← Sign out</button>
@@ -1347,6 +1345,7 @@ function logout() {
 // ── CLASS SELECT ──────────────────────────────────────────────────────────────
 async function selectClass(cls) {
   currentClass = cls;
+  currentWeekCache = null; // reset so it re-fetches for new class
   sessionStorage.setItem('tp_class', cls);
   document.getElementById('class-badge').textContent =
     cls === 'EWSI' ? 'EWS I' : 'EWS III';
@@ -2357,9 +2356,12 @@ async function loadGradesData() {
   try {
     const data = await api({ action: 'getGradesData', week });
     if (!data.hasData) {
-      const reason = data.reason || `No Grades Input found for Week ${week}. Click Update Grades Input to generate it.`;
+      const reason = data.reason || `No Grades Input found for Week ${week}.`;
       document.getElementById('grades-content').innerHTML =
-        `<div class="alert alert-warning">⚠️ ${reason}</div>`;
+        `<div class="alert alert-warning" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+          <span>⚠️ ${reason}</span>
+          <button class="btn btn-primary btn-sm" onclick="doApplyFlagFixes()">⚙ Generate Now</button>
+        </div>`;
       gradesData = null;
       return;
     }
@@ -2796,6 +2798,6 @@ async function saveQBInstruction(section, insRow, insTab) {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v2.2</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v2.3</div>
 </body>
 </html>

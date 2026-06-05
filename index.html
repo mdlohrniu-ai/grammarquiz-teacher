@@ -2339,8 +2339,9 @@ async function loadGradesData() {
   try {
     const data = await api({ action: 'getGradesData', week });
     if (!data.hasData) {
+      const reason = data.reason || `No Grades Input found for Week ${week}. Click Update Grades Input to generate it.`;
       document.getElementById('grades-content').innerHTML =
-        `<div class="alert alert-warning">⚠️ No Grades Input found for Week ${week}. Click <strong>Update Grades Input</strong> to generate it.</div>`;
+        `<div class="alert alert-warning">⚠️ ${reason}</div>`;
       gradesData = null;
       return;
     }
@@ -2360,17 +2361,17 @@ function renderGradesTable(data) {
     return;
   }
 
-  const isBackup = data.source === 'backup';
-  const sourceBadge = isBackup
-    ? `<div class="alert alert-info" style="margin-bottom:1rem">📁 Showing archived data from <strong>${data.exportName}</strong>. Homework checkboxes are not editable for past weeks.</div>`
-    : '';
-
-  let html = sourceBadge + `<div style="overflow-x:auto;border-radius:var(--radius-lg);border:1px solid var(--border-soft)">
-    <table class="data-table" style="min-width:${isBackup ? '400px' : '700px'}">
+  let html = `<div style="overflow-x:auto;border-radius:var(--radius-lg);border:1px solid var(--border-soft)">
+    <table class="data-table" style="min-width:700px">
       <thead>
         <tr>
           <th>Student #</th><th>Name</th>
-          ${isBackup ? '' : '<th style="text-align:center">Practice Q</th><th style="text-align:center">Flashcard</th><th style="text-align:center">Quiz New</th><th style="text-align:center">Quiz Review</th><th style="text-align:center">Flagged</th><th style="text-align:center">Bonus</th>'}
+          <th style="text-align:center">Practice Q</th>
+          <th style="text-align:center">Flashcard</th>
+          <th style="text-align:center">Quiz New</th>
+          <th style="text-align:center">Quiz Review</th>
+          <th style="text-align:center">Flagged</th>
+          <th style="text-align:center">Bonus</th>
           <th style="text-align:center">Total</th>
         </tr>
       </thead><tbody>`;
@@ -2383,7 +2384,6 @@ function renderGradesTable(data) {
     html += `<tr>
       <td style="font-family:'DM Mono',monospace;font-size:0.8rem;color:var(--ink-muted)">${r.num}</td>
       <td style="font-weight:500">${r.eng}</td>
-      ${isBackup ? '' : `
       <td style="text-align:center">
         <input type="checkbox" ${r.practiceQ ? 'checked' : ''} id="gw-pq-${r.num}"
           style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer">
@@ -2395,17 +2395,15 @@ function renderGradesTable(data) {
       <td style="text-align:center;font-weight:600;color:${newColor}">${r.quizNew || '—'}</td>
       <td style="text-align:center;font-weight:600;color:${revColor}">${r.quizRev || '—'}</td>
       <td style="text-align:center;font-size:0.78rem;color:var(--gold)">${r.flagged || ''}</td>
-      <td style="text-align:center;font-size:0.78rem;color:var(--gold)">${r.bonus || ''}</td>`}
+      <td style="text-align:center;font-size:0.78rem;color:var(--gold)">${r.bonus || ''}</td>
       <td style="text-align:center;font-weight:700;color:${totalColor}">${r.total !== undefined ? r.total : '—'}</td>
     </tr>`;
   });
 
-  html += `</tbody></table></div>`;
-  if (!isBackup) {
-    html += `<div style="margin-top:1rem;display:flex;gap:0.5rem">
-      <button class="btn btn-ghost btn-sm" onclick="saveGradesHW()">💾 Save homework changes</button>
-    </div>`;
-  }
+  html += `</tbody></table></div>
+  <div style="margin-top:1rem;display:flex;gap:0.5rem">
+    <button class="btn btn-ghost btn-sm" onclick="saveGradesHW()">💾 Save homework changes</button>
+  </div>`;
 
   content.innerHTML = html;
 }
@@ -2695,6 +2693,6 @@ async function saveQBInstruction(section, insRow, insTab) {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v1.7</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v1.8</div>
 </body>
 </html>

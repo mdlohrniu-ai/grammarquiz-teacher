@@ -979,7 +979,7 @@ body {
 </div>
 
 <!-- ── CLASS SELECT SCREEN ──────────────────────────────────────────────────── -->
-<div class="screen" id="class-select-screen">
+<div class="screen" id="class-select-screen" style="display:none">
   <div class="class-select-box">
     <div>
       <div class="class-select-title">Select a class</div>
@@ -1000,7 +1000,7 @@ body {
 </div>
 
 <!-- ── MAIN APP SCREEN ───────────────────────────────────────────────────────── -->
-<div class="screen" id="app-screen">
+<div class="screen" id="app-screen" style="display:none">
   <div class="app-header">
     <div class="app-header-left">
       <div class="app-logo">Quiz Manager</div>
@@ -1204,8 +1204,13 @@ let isDirty     = false;  // unsaved changes in units panel
 
 // ── SHOW/HIDE SCREENS ─────────────────────────────────────────────────────────
 function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('active');
+    s.style.display = 'none';
+  });
+  const el = document.getElementById(id);
+  el.classList.add('active');
+  el.style.display = '';
   window.scrollTo(0, 0);
 }
 
@@ -1265,13 +1270,15 @@ async function doLogin() {
   try {
     const params = new URLSearchParams({ action: 'loginGet', username, password });
     const data = await xhrGet(API + '?' + params.toString());
+    console.log('Login response:', JSON.stringify(data));
+    console.log('data.ok:', data.ok, 'token:', data.token);
     if (!data.ok) throw new Error(data.error || 'Login failed');
 
     authToken = data.token;
     authUser  = data.username;
     sessionStorage.setItem('tp_token', authToken);
     sessionStorage.setItem('tp_user',  authUser);
-
+    console.log('Showing class select screen');
     showScreen('class-select-screen');
   } catch(e) {
     errEl.textContent = e.message;
@@ -2042,6 +2049,6 @@ async function saveHomework() {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v0.4</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v0.6</div>
 </body>
 </html>

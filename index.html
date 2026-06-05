@@ -1041,7 +1041,7 @@ body {
         <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:0.5rem">
             <span style="font-size:0.82rem;color:var(--ink-soft)">Week:</span>
-            <input type="number" id="week-num-input" min="1" max="30" style="width:60px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:0.4rem 0.5rem;font-family:'DM Mono',monospace;font-size:0.9rem;color:var(--accent);text-align:center;outline:none;" onchange="markDirty()">
+            <input type="number" id="week-num-input" min="1" max="30" style="width:60px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:0.4rem 0.5rem;font-family:'DM Mono',monospace;font-size:0.9rem;color:var(--accent);text-align:center;outline:none;" onchange="onWeekNumChange()">
           </div>
           <button class="btn btn-ghost btn-sm" onclick="loadUnits()">↺ Refresh</button>
           <button class="btn btn-primary" onclick="generateQuizzes()" id="save-units-btn">⚡ Generate Quizzes</button>
@@ -1446,9 +1446,19 @@ async function loadUnits() {
   }
 }
 
+function onWeekNumChange() {
+  if (mgmtData) {
+    mgmtData.weekNum = document.getElementById('week-num-input').value;
+    renderUnitsTable(mgmtData);
+    setTimeout(initStickyScrollbar, 100);
+    checkDuplicateUnits(mgmtData);
+  }
+  markDirty();
+}
+
 function markDirty() {
   isDirty = true;
-  document.getElementById('save-units-btn').textContent = 'Save Changes *';
+  document.getElementById('save-units-btn').textContent = '⚡ Generate Quizzes *';
 }
 
 function renderUnitsTable(data) {
@@ -1542,9 +1552,19 @@ function getDuplicateWarnings(data) {
   return warnings;
 }
 
+function onWeekNumChange() {
+  if (mgmtData) {
+    mgmtData.weekNum = document.getElementById('week-num-input').value;
+    renderUnitsTable(mgmtData);
+    setTimeout(initStickyScrollbar, 100);
+    checkDuplicateUnits(mgmtData);
+  }
+  markDirty();
+}
+
 function markDirty() {
   isDirty = true;
-  document.getElementById('save-units-btn').textContent = 'Save Changes *';
+  document.getElementById('save-units-btn').textContent = '⚡ Generate Quizzes *';
   // Re-run duplicate check with current input values applied to mgmtData
   if (mgmtData) {
     // Update mgmtData units from current inputs before checking
@@ -2992,6 +3012,6 @@ async function downloadGradingPDF() {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v3.4</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v3.5</div>
 </body>
 </html>

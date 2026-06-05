@@ -1511,20 +1511,32 @@ function checkDuplicateUnits(data) {
     const currentEntry = (s.units[currentWeekIdx] || '').trim();
     if (!currentEntry || currentEntry === '0' || currentEntry === '') return;
 
-    // All units entered this week (semicolon separated)
-    const currentUnits = currentEntry.split(';').map(u => u.trim()).filter(u => u && u !== '0');
-    if (currentUnits.length === 0) return;
+    // Parse current week entry
+    const allParts = currentEntry.split(';').map(u => u.trim()).filter(u => u && u !== '0');
+    if (allParts.length === 0) return;
 
-    // Collect every unit number from all previous weeks
+    // If 3+ parts, quiz has already been generated and the last part is the
+    // review unit added by the generator — skip the last entry to avoid false positives.
+    // If 1 part: just new unit. If 2 parts: new + bonus OR new + review (teacher-entered).
+    // We only check the units the teacher entered, which is everything except
+    // the last entry when there are 3+ parts.
+    const unitsToCheck = allParts.length >= 3
+      ? allParts.slice(0, allParts.length - 1)  // drop last (review added by generator)
+      : allParts;
+
+    // Collect every unit from all previous weeks (all parts, since past entries are settled)
     const prevAllUnits = new Set();
     s.units.forEach((entry, idx) => {
       if (idx >= currentWeekIdx) return;
       if (!entry || entry.trim() === '' || entry.trim() === '0') return;
-      entry.split(';').forEach(u => { const t = u.trim(); if (t) prevAllUnits.add(t); });
+      // For previous weeks, only collect the teacher-entered units (not the last review unit if 3+)
+      const prevParts = entry.split(';').map(u => u.trim()).filter(u => u && u !== '0');
+      const prevToIndex = prevParts.length >= 3 ? prevParts.length - 1 : prevParts.length;
+      prevParts.slice(0, prevToIndex).forEach(u => prevAllUnits.add(u));
     });
 
-    // Any current unit that appeared in any previous week is a duplicate
-    const dupes = currentUnits.filter(u => prevAllUnits.has(u));
+    // Flag any current units that appeared before
+    const dupes = unitsToCheck.filter(u => prevAllUnits.has(u));
     if (dupes.length > 0) {
       warnings.push({
         name: s.eng,
@@ -2950,6 +2962,6 @@ async function downloadGradingPDF() {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v2.9</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v3.0</div>
 </body>
 </html>

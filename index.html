@@ -1011,7 +1011,7 @@ body {
       <button class="nav-btn"        onclick="showPanel('test')"      id="nav-test">🎯 Test</button>
       <button class="nav-btn"        onclick="showPanel('preview')"   id="nav-preview">👁 Preview</button>
       <button class="nav-btn"        onclick="showPanel('flags')"     id="nav-flags">🚩 Flags</button>
-      <button class="nav-btn"        onclick="showPanel('homework')"  id="nav-homework">✅ Homework</button>
+      
       <button class="nav-btn"        onclick="showPanel('grades')"    id="nav-grades">📊 Grades</button>
       <button class="nav-btn"        onclick="showPanel('qb')"        id="nav-qb">📖 QB Editor</button>
     </nav>
@@ -1163,31 +1163,6 @@ body {
       </div>
     </div>
 
-    <!-- ── HOMEWORK PANEL ─────────────────────────────────────────────────── -->
-    <div id="panel-homework" style="display:none">
-      <div class="panel-header">
-        <div>
-          <div class="panel-title">Homework Check</div>
-          <div class="panel-sub">Mark practice questions and flashcard completion</div>
-        </div>
-        <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
-          <select id="hw-week-select" class="field" style="width:120px;margin:0" onchange="loadHomework()">
-            <option value="">Week…</option>
-          </select>
-          <button class="btn btn-ghost btn-sm" onclick="toggleAllHomework(true)">Check all</button>
-          <button class="btn btn-ghost btn-sm" onclick="toggleAllHomework(false)">Uncheck all</button>
-          <button class="btn btn-primary" onclick="saveHomework()" id="hw-save-btn">Save</button>
-        </div>
-      </div>
-
-      <div id="hw-content">
-        <div class="empty-state">
-          <div class="empty-state-icon">✅</div>
-          Select a week to view homework status
-        </div>
-      </div>
-    </div>
-
     <!-- ── GRADES PANEL ──────────────────────────────────────────────────── -->
     <div id="panel-grades" style="display:none">
       <div class="panel-header">
@@ -1211,13 +1186,10 @@ body {
           </div>
         </div>
         <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
-          <select id="grades-week-select" class="field" style="width:120px;margin:0" onchange="loadGradesData()">
-            <option value="">Week…</option>
-          </select>
-          <input type="number" id="grades-week-manual" min="1" max="30" placeholder="or type week #"
-            style="width:110px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.6rem;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--ink);outline:none;"
-            oninput="gradesWeekOverride=this.value; document.getElementById('grades-week-select').value=''; loadGradesData();">
-          <button class="btn btn-ghost btn-sm" onclick="doUpdateGradesInput()" id="update-grades-btn">⚙ Update Grades Input</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleAllGradesHW(true)">✓ Check all HW</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleAllGradesHW(false)">✗ Uncheck all HW</button>
+          <button class="btn btn-ghost btn-sm" onclick="doUpdateGradesInput()" id="update-grades-btn">⚙ Refresh Grades</button>
+          <button class="btn btn-ghost btn-sm" onclick="saveGradesHW()">💾 Save HW</button>
           <button class="btn btn-primary" onclick="doExportGrades()" id="export-grades-btn">📤 Export Grades</button>
         </div>
       </div>
@@ -1385,7 +1357,7 @@ function goSelectClass() {
 }
 
 // ── NAV PANELS ────────────────────────────────────────────────────────────────
-const PANELS = ['units','test','preview','flags','homework','grades','qb'];
+const PANELS = ['units','test','preview','flags','grades','qb'];
 
 function showPanel(name) {
   PANELS.forEach(p => {
@@ -1400,7 +1372,7 @@ function showPanel(name) {
   if (name === 'test')     loadTestControl();
   if (name === 'preview')  loadPreviewStudentList();
   if (name === 'flags')    loadWeeks();
-  if (name === 'homework') loadWeeks();
+  
   if (name === 'grades')   { loadWeeks(); loadGradesData(); }
 }
 
@@ -1756,6 +1728,36 @@ function setPreviewMode(mode) {
   if (previewQuestions) renderPreview();
 }
 
+async function teacherToggleFlag(qKey, week, studentNum, studentName, resRow) {
+  const btn = document.getElementById('preview-flag-' + qKey);
+  const isFlagged = resRow.flagged;
+  try {
+    await api({
+      action: 'flagForStudent',
+      week, studentNum, studentName,
+      qNum: resRow.qNum || '',
+      unit: resRow.unit || '',
+      question: resRow.question || '',
+      studentAnswer: resRow.studentAnswer || '',
+      correctAnswer: resRow.correctAnswer || '',
+      score: resRow.score || 0,
+      reason: 'Flagged by teacher',
+      unflag: isFlagged
+    });
+    // Toggle state
+    resRow.flagged = !isFlagged;
+    if (btn) {
+      btn.textContent = resRow.flagged ? '🚩 Flagged' : '🚩 Flag';
+      btn.style.background = resRow.flagged ? 'var(--red-bg)' : 'none';
+      btn.style.border = `1px solid ${resRow.flagged ? 'var(--red)' : '#ccc'}`;
+      btn.style.color = resRow.flagged ? 'var(--red)' : '#999';
+    }
+    toast(resRow.flagged ? 'Question flagged' : 'Flag removed', 'success');
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
 function renderPreview() {
   const qs = previewQuestions;
   if (!qs || qs.length === 0) return;
@@ -1871,12 +1873,23 @@ function renderPreview() {
           const bgColor = resRow.result === 'correct' ? '#e6f4ec' : resRow.result === 'half' ? '#fef6e4' : '#faeaea';
           const borderColor = resRow.result === 'correct' ? '#a3d4b8' : resRow.result === 'half' ? '#f0d080' : '#f0b0b0';
           const ansColor = resRow.result === 'correct' ? '#2d7a4f' : resRow.result === 'half' ? '#b87a00' : '#b83232';
-          html += `<div style="background:${bgColor};border:1.5px solid ${borderColor};border-radius:6px;padding:0.5rem 0.8rem;font-size:0.88rem;display:flex;justify-content:space-between;align-items:center">
-            <div>
+          const qKey2 = btoa(encodeURIComponent((resRow.question||'') + (resRow.studentAnswer||''))).slice(0,12);
+          const sNum2 = previewData?.studentNumber || '';
+          const sName2 = previewData?.name || '';
+          const wk2 = previewData?.week || '';
+          html += `<div style="background:${bgColor};border:1.5px solid ${borderColor};border-radius:6px;padding:0.5rem 0.8rem;font-size:0.88rem;display:flex;justify-content:space-between;align-items:center;gap:0.5rem">
+            <div style="flex:1">
               <div style="font-weight:500;color:${ansColor}">${resRow.studentAnswer || '(no answer)'}</div>
               ${resRow.result !== 'correct' ? `<div style="font-size:0.78rem;color:#6b6454">Correct: <span style="color:#2d7a4f;font-weight:500">${resRow.correctAnswer}</span></div>` : ''}
             </div>
-            <div style="font-size:0.78rem;font-weight:600;color:${ansColor}">${resRow.score > 0 ? '+'+resRow.score+' pt' : '0 pt'}</div>
+            <div style="display:flex;align-items:center;gap:0.4rem;flex-shrink:0">
+              <span style="font-size:0.78rem;font-weight:600;color:${ansColor}">${resRow.score > 0 ? '+'+resRow.score+' pt' : '0 pt'}</span>
+              <button id="preview-flag-${qKey2}"
+                onclick="teacherToggleFlag('${qKey2}','${wk2}','${sNum2}','${sName2}',${JSON.stringify(resRow).replace(/'/g,'\'').replace(/\"/g,'&quot;')})"
+                style="background:${resRow.flagged ? 'var(--red-bg)' : 'none'};border:1px solid ${resRow.flagged ? 'var(--red)' : '#ccc'};border-radius:4px;padding:2px 6px;font-size:0.7rem;color:${resRow.flagged ? 'var(--red)' : '#999'};cursor:pointer;white-space:nowrap">
+                ${resRow.flagged ? '🚩 Flagged' : '🚩 Flag'}
+              </button>
+            </div>
           </div>`;
         } else {
           html += `<div style="background:#e8f0f7;color:#2a5c8a;padding:0.5rem 0.8rem;border-radius:6px;font-size:0.88rem;font-weight:500">${q.answer}</div>`;
@@ -1895,18 +1908,30 @@ function renderPreview() {
 
 function renderStudentAnswerBoxes(resultRows, double) {
   const markers = ['①', '②'];
+  const studentNum = previewData?.studentNumber || '';
+  const studentName = previewData?.name || '';
+  const week = previewData?.week || '';
   return resultRows.map((r, idx) => {
     const bgColor = r.result === 'correct' ? '#e6f4ec' : r.result === 'half' ? '#fef6e4' : '#faeaea';
     const borderColor = r.result === 'correct' ? '#a3d4b8' : r.result === 'half' ? '#f0d080' : '#f0b0b0';
     const ansColor = r.result === 'correct' ? '#2d7a4f' : r.result === 'half' ? '#b87a00' : '#b83232';
+    const qKey = btoa(encodeURIComponent((r.question||'') + (r.studentAnswer||'') + idx)).slice(0,12);
+    const isFlagged = r.flagged;
     return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
       ${double ? `<span style="font-weight:600;color:#2a5c8a">${markers[idx]}</span>` : ''}
-      <div style="flex:1;background:${bgColor};border:1.5px solid ${borderColor};border-radius:6px;padding:0.4rem 0.7rem;font-size:0.85rem;display:flex;justify-content:space-between;align-items:center">
-        <div>
+      <div style="flex:1;background:${bgColor};border:1.5px solid ${borderColor};border-radius:6px;padding:0.4rem 0.7rem;font-size:0.85rem;display:flex;justify-content:space-between;align-items:center;gap:0.5rem">
+        <div style="flex:1">
           <div style="font-weight:500;color:${ansColor}">${r.studentAnswer || '(no answer)'}</div>
           ${r.result !== 'correct' ? `<div style="font-size:0.75rem;color:#6b6454">Correct: <span style="color:#2d7a4f;font-weight:500">${r.correctAnswer}</span></div>` : ''}
         </div>
-        <span style="font-size:0.75rem;font-weight:600;color:${ansColor};flex-shrink:0">${r.score > 0 ? '+'+r.score+' pt' : '0 pt'}</span>
+        <div style="display:flex;align-items:center;gap:0.4rem;flex-shrink:0">
+          <span style="font-size:0.75rem;font-weight:600;color:${ansColor}">${r.score > 0 ? '+'+r.score+' pt' : '0 pt'}</span>
+          <button id="preview-flag-${qKey}"
+            onclick="teacherToggleFlag('${qKey}','${week}','${studentNum}','${studentName}',${JSON.stringify(r).replace(/'/g,'\'').replace(/\"/g,'&quot;')})"
+            style="background:${isFlagged ? 'var(--red-bg)' : 'none'};border:1px solid ${isFlagged ? 'var(--red)' : '#ccc'};border-radius:4px;padding:2px 6px;font-size:0.7rem;color:${isFlagged ? 'var(--red)' : '#999'};cursor:pointer;white-space:nowrap">
+            ${isFlagged ? '🚩 Flagged' : '🚩 Flag'}
+          </button>
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -2204,91 +2229,9 @@ async function batchSaveFlags() {
 
 let hwData = null;
 
-async function loadHomework() {
-  const week = document.getElementById('hw-week-select').value;
-  if (!week) return;
 
-  setLoading(true);
-  try {
-    const data = await api({ action: 'getGradesInput', week });
-    hwData = data;
-    renderHomework(week, data);
-  } catch(e) {
-    toast('Failed to load homework: ' + e.message, 'error');
-  } finally {
-    setLoading(false);
-  }
-}
 
-function renderHomework(week, data) {
-  const content = document.getElementById('hw-content');
 
-  if (!data.hasGradesInput) {
-    content.innerHTML = `<div class="alert alert-warning">
-      ⚠️ Grades Input for Week ${week} doesn't exist yet. Run <strong>Update Grades Input</strong> from the Quiz Manager menu in Google Sheets first.
-    </div>`;
-    return;
-  }
-
-  let html = `<div class="card" style="overflow:hidden">
-    <div style="display:grid;grid-template-columns:1fr 120px 120px;gap:0.5rem;padding:0.5rem 0.8rem;background:var(--surface2);border-bottom:1px solid var(--border-soft)">
-      <span style="font-size:0.7rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-muted)">Student</span>
-      <span style="font-size:0.7rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-muted);text-align:center">Practice Q</span>
-      <span style="font-size:0.7rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-muted);text-align:center">Flashcard</span>
-    </div>`;
-
-  data.roster.forEach(s => {
-    const hw = data.hwStatus[s.num] || { practiceQ: true, flashcard: true };
-    html += `<div class="hw-row">
-      <div class="hw-name">
-        <div style="font-size:0.88rem;font-weight:500">${s.eng}</div>
-        <div style="font-size:0.72rem;color:var(--ink-muted);font-family:'DM Mono',monospace">${s.num}</div>
-      </div>
-      <div style="display:flex;justify-content:center">
-        <input type="checkbox" ${hw.practiceQ ? 'checked' : ''} 
-          id="hw-pq-${s.num}" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer">
-      </div>
-      <div style="display:flex;justify-content:center">
-        <input type="checkbox" ${hw.flashcard ? 'checked' : ''}
-          id="hw-fc-${s.num}" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer">
-      </div>
-    </div>`;
-  });
-
-  html += '</div>';
-  content.innerHTML = html;
-}
-
-function toggleAllHomework(checked) {
-  if (!hwData) return;
-  hwData.roster.forEach(s => {
-    const pq = document.getElementById('hw-pq-' + s.num);
-    const fc = document.getElementById('hw-fc-' + s.num);
-    if (pq) pq.checked = checked;
-    if (fc) fc.checked = checked;
-  });
-}
-
-async function saveHomework() {
-  const week = document.getElementById('hw-week-select').value;
-  if (!week || !hwData) return;
-
-  const updates = hwData.roster.map(s => ({
-    studentNum: s.num,
-    practiceQ: document.getElementById('hw-pq-' + s.num)?.checked ?? true,
-    flashcard:  document.getElementById('hw-fc-' + s.num)?.checked ?? true
-  }));
-
-  setLoading(true);
-  try {
-    await api({}, 'POST', { action: 'saveHomework', week, updates });
-    toast('Homework saved!', 'success');
-  } catch(e) {
-    toast('Save failed: ' + e.message, 'error');
-  } finally {
-    setLoading(false);
-  }
-}
 
 // ── STICKY SCROLLBAR SYNC ────────────────────────────────────────────────────
 function initStickyScrollbar() {
@@ -2325,16 +2268,36 @@ function initStickyScrollbar() {
 // ── ═══════════════════════════════════════════════════════════════════════════
 
 let gradesData = null;
-let gradesWeekOverride = '';
+let currentWeekCache = null;
 
-function getGradesWeek() {
-  return document.getElementById('grades-week-select').value ||
-         document.getElementById('grades-week-manual')?.value || '';
+async function getCurrentWeek() {
+  if (currentWeekCache) return currentWeekCache;
+  try {
+    const data = await api({ action: 'getCurrentWeek' });
+    currentWeekCache = data.week;
+    return data.week;
+  } catch(e) { return null; }
 }
 
+function toggleAllGradesHW(checked) {
+  if (!gradesData) return;
+  gradesData.rows.forEach(r => {
+    const pq = document.getElementById('gw-pq-' + r.num);
+    const fc = document.getElementById('gw-fc-' + r.num);
+    if (pq) pq.checked = checked;
+    if (fc) fc.checked = checked;
+  });
+}
+
+
 async function loadGradesData() {
-  const week = getGradesWeek();
-  if (!week) return;
+  // Auto-detect current week from Quiz Data sheet
+  const week = await getCurrentWeek();
+  if (!week) {
+    document.getElementById('grades-content').innerHTML =
+      '<div class="alert alert-warning">⚠️ Could not detect current week. Make sure Quiz Data has been generated.</div>';
+    return;
+  }
   setLoading(true);
   try {
     const data = await api({ action: 'getGradesData', week });
@@ -2392,8 +2355,22 @@ function renderGradesTable(data) {
         <input type="checkbox" ${r.flashcard ? 'checked' : ''} id="gw-fc-${r.num}"
           style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer">
       </td>
-      <td style="text-align:center;font-weight:600;color:${newColor}">${r.quizNew || '—'}</td>
-      <td style="text-align:center;font-weight:600;color:${revColor}">${r.quizRev || '—'}</td>
+      <td style="text-align:center">
+        <select id="gw-new-${r.num}" onchange="updateGradeOverrideColor(this)"
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:0.25rem 0.4rem;font-size:0.82rem;font-weight:600;color:${newColor};text-align:center;outline:none;cursor:pointer">
+          <option value="PASS" ${r.quizNew==='PASS'?'selected':''} style="color:var(--green)">PASS</option>
+          <option value="FAIL" ${r.quizNew==='FAIL'?'selected':''} style="color:var(--red)">FAIL</option>
+          <option value="N/A"  ${r.quizNew==='N/A'||!r.quizNew?'selected':''} style="color:gray">N/A</option>
+        </select>
+      </td>
+      <td style="text-align:center">
+        <select id="gw-rev-${r.num}" onchange="updateGradeOverrideColor(this)"
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:0.25rem 0.4rem;font-size:0.82rem;font-weight:600;color:${revColor};text-align:center;outline:none;cursor:pointer">
+          <option value="PASS" ${r.quizRev==='PASS'?'selected':''} style="color:var(--green)">PASS</option>
+          <option value="FAIL" ${r.quizRev==='FAIL'?'selected':''} style="color:var(--red)">FAIL</option>
+          <option value="N/A"  ${r.quizRev==='N/A'||!r.quizRev?'selected':''} style="color:gray">N/A</option>
+        </select>
+      </td>
       <td style="text-align:center;font-size:0.78rem;color:var(--gold)">${r.flagged || ''}</td>
       <td style="text-align:center;font-size:0.78rem;color:var(--gold)">${r.bonus || ''}</td>
       <td style="text-align:center;font-weight:700;color:${totalColor}">${r.total !== undefined ? r.total : '—'}</td>
@@ -2401,16 +2378,14 @@ function renderGradesTable(data) {
   });
 
   html += `</tbody></table></div>
-  <div style="margin-top:1rem;display:flex;gap:0.5rem">
-    <button class="btn btn-ghost btn-sm" onclick="saveGradesHW()">💾 Save homework changes</button>
-  </div>`;
+`;
 
   content.innerHTML = html;
 }
 
 async function doUpdateGradesInput() {
-  const week = getGradesWeek();
-  if (!week) { toast('Select a week number first', 'error'); return; }
+  const week = await getCurrentWeek();
+  if (!week) { toast('Could not detect current week', 'error'); return; }
   if (!confirm(`Update Grades Input for Week ${week}? This will apply any approved flag corrections.`)) return;
   setLoading(true);
   try {
@@ -2431,8 +2406,8 @@ async function doUpdateGradesInput() {
 }
 
 async function doExportGrades() {
-  const week = getGradesWeek();
-  if (!week) { toast('Select a week number first', 'error'); return; }
+  const week = await getCurrentWeek();
+  if (!week) { toast('Could not detect current week', 'error'); return; }
   setLoading(true);
   try {
     // First save any homework changes
@@ -2457,13 +2432,20 @@ async function doExportGrades() {
   }
 }
 
+function updateGradeOverrideColor(sel) {
+  const val = sel.value;
+  sel.style.color = val === 'PASS' ? 'var(--green)' : val === 'FAIL' ? 'var(--red)' : 'var(--ink-muted)';
+}
+
 async function saveGradesHW(silent = false) {
   if (!gradesData) return;
-  const week = getGradesWeek();
+  const week = await getCurrentWeek();
   const updates = gradesData.rows.map(r => ({
     studentNum: r.num,
     practiceQ: document.getElementById('gw-pq-' + r.num)?.checked ?? r.practiceQ,
-    flashcard:  document.getElementById('gw-fc-' + r.num)?.checked ?? r.flashcard
+    flashcard:  document.getElementById('gw-fc-' + r.num)?.checked ?? r.flashcard,
+    quizNew:   document.getElementById('gw-new-' + r.num)?.value ?? r.quizNew,
+    quizRev:   document.getElementById('gw-rev-' + r.num)?.value ?? r.quizRev
   }));
   try {
     await api({ action: 'saveHomework', week, updates });
@@ -2693,6 +2675,6 @@ async function saveQBInstruction(section, insRow, insTab) {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v1.8</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v1.9</div>
 </body>
 </html>

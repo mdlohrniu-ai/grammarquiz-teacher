@@ -1507,35 +1507,33 @@ function checkDuplicateUnits(data) {
 
   const warnings = [];
 
+  // If ANY student already has 3+ parts in the current week, the quiz has been
+  // generated — skip the duplicate check entirely for this load.
+  const quizAlreadyGenerated = (data.students || []).some(s => {
+    const entry = (s.units[currentWeekIdx] || '').trim();
+    return entry.split(';').filter(u => u.trim()).length >= 3;
+  });
+  if (quizAlreadyGenerated) return;
+
   (data.students || []).forEach(s => {
     const currentEntry = (s.units[currentWeekIdx] || '').trim();
-    if (!currentEntry || currentEntry === '0' || currentEntry === '') return;
+    if (!currentEntry || currentEntry === '0') return;
 
-    // Parse current week entry
-    const allParts = currentEntry.split(';').map(u => u.trim()).filter(u => u && u !== '0');
-    if (allParts.length === 0) return;
+    // Units the teacher entered this week (1 or 2 parts only at this point)
+    const unitsToCheck = currentEntry.split(';').map(u => u.trim()).filter(u => u && u !== '0');
+    if (unitsToCheck.length === 0) return;
 
-    // If 3+ parts, quiz has already been generated and the last part is the
-    // review unit added by the generator — skip the last entry to avoid false positives.
-    // If 1 part: just new unit. If 2 parts: new + bonus OR new + review (teacher-entered).
-    // We only check the units the teacher entered, which is everything except
-    // the last entry when there are 3+ parts.
-    const unitsToCheck = allParts.length >= 3
-      ? allParts.slice(0, allParts.length - 1)  // drop last (review added by generator)
-      : allParts;
-
-    // Collect every unit from all previous weeks (all parts, since past entries are settled)
+    // Previous weeks: collect ALL unit numbers that appeared
+    // (safe now because we know quiz hasn't been generated yet,
+    //  so previous weeks' entries are also teacher-entered values)
     const prevAllUnits = new Set();
     s.units.forEach((entry, idx) => {
       if (idx >= currentWeekIdx) return;
       if (!entry || entry.trim() === '' || entry.trim() === '0') return;
-      // For previous weeks, only collect the teacher-entered units (not the last review unit if 3+)
-      const prevParts = entry.split(';').map(u => u.trim()).filter(u => u && u !== '0');
-      const prevToIndex = prevParts.length >= 3 ? prevParts.length - 1 : prevParts.length;
-      prevParts.slice(0, prevToIndex).forEach(u => prevAllUnits.add(u));
+      entry.split(';').forEach(u => { const t = u.trim(); if (t) prevAllUnits.add(t); });
     });
 
-    // Flag any current units that appeared before
+    // Flag any current unit that appeared in any previous week
     const dupes = unitsToCheck.filter(u => prevAllUnits.has(u));
     if (dupes.length > 0) {
       warnings.push({
@@ -2962,6 +2960,6 @@ async function downloadGradingPDF() {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v3.0</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v3.2</div>
 </body>
 </html>

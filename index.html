@@ -1436,6 +1436,7 @@ async function loadUnits() {
     mgmtData = data;
     renderUnitsTable(data);
     setTimeout(initStickyScrollbar, 100);
+    checkDuplicateUnits(data);
     isDirty = false;
     document.getElementById('save-units-btn').textContent = 'Save Changes';
   } catch(e) {
@@ -1499,6 +1500,82 @@ function renderUnitsTable(data) {
 }
 
 
+
+function checkDuplicateUnits(data) {
+  const currentWeekIdx = data.weekNum ? Number(data.weekNum) - 1 : -1;
+  if (currentWeekIdx < 0) return;
+
+  const warnings = [];
+
+  (data.students || []).forEach(s => {
+    const currentEntry = (s.units[currentWeekIdx] || '').trim();
+    if (!currentEntry || currentEntry === '0' || currentEntry === '') return;
+
+    // All units entered this week (semicolon separated)
+    const currentUnits = currentEntry.split(';').map(u => u.trim()).filter(u => u && u !== '0');
+    if (currentUnits.length === 0) return;
+
+    // Collect every unit number from all previous weeks
+    const prevAllUnits = new Set();
+    s.units.forEach((entry, idx) => {
+      if (idx >= currentWeekIdx) return;
+      if (!entry || entry.trim() === '' || entry.trim() === '0') return;
+      entry.split(';').forEach(u => { const t = u.trim(); if (t) prevAllUnits.add(t); });
+    });
+
+    // Any current unit that appeared in any previous week is a duplicate
+    const dupes = currentUnits.filter(u => prevAllUnits.has(u));
+    if (dupes.length > 0) {
+      warnings.push({
+        name: s.eng,
+        units: dupes,
+        week: currentWeekIdx + 1
+      });
+    }
+  });
+
+  // Clear any existing warning
+  const existing = document.getElementById('duplicate-unit-warning');
+  if (existing) existing.remove();
+
+  if (warnings.length === 0) return;
+
+  // Show warning banner
+  const banner = document.createElement('div');
+  banner.id = 'duplicate-unit-warning';
+  banner.style.cssText = 'background:var(--red-bg);border:1px solid rgba(192,85,85,0.4);border-radius:var(--radius);padding:0.9rem 1.1rem;margin-bottom:1rem;font-size:0.85rem;color:var(--red)';
+  
+  const rows = warnings.map(w =>
+    `<div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.3rem">
+      <span style="font-weight:600">${w.name}</span>
+      <span style="color:var(--ink-soft)">—</span>
+      <span>Unit${w.units.length > 1 ? 's' : ''} <strong>${w.units.join(', ')}</strong> already studied in a previous week</span>
+    </div>`
+  ).join('');
+
+  banner.innerHTML = `<div style="font-weight:600;margin-bottom:0.4rem">⚠️ Duplicate unit${warnings.length > 1 ? 's' : ''} detected — please check before saving:</div>${rows}`;
+
+  // Insert before the table
+  const tableWrap = document.querySelector('.mgmt-table-wrap');
+  if (tableWrap) tableWrap.parentNode.insertBefore(banner, tableWrap);
+}
+
+// Also run check when any unit input changes
+function markDirty() {
+  isDirty = true;
+  document.getElementById('save-units-btn').textContent = 'Save Changes *';
+  // Re-run duplicate check with current input values applied to mgmtData
+  if (mgmtData) {
+    // Update mgmtData units from current inputs before checking
+    document.querySelectorAll('.mgmt-input').forEach(input => {
+      const row = parseInt(input.dataset.row);
+      const idx = parseInt(input.dataset.unitidx);
+      const s = mgmtData.students.find(s => s.row === row);
+      if (s) s.units[idx] = input.value.trim();
+    });
+    checkDuplicateUnits(mgmtData);
+  }
+}
 
 async function saveUnits() {
   const weekNum = document.getElementById('week-num-input').value;
@@ -2873,6 +2950,6 @@ async function downloadGradingPDF() {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v2.6</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v2.9</div>
 </body>
 </html>

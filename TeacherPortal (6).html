@@ -1,0 +1,2096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz Manager — Teacher Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── DESIGN TOKENS ──────────────────────────────────────────────────────────── */
+:root {
+  --bg:          #0f0e0c;
+  --surface:     #1a1916;
+  --surface2:    #242220;
+  --surface3:    #2e2b28;
+  --border:      #3a3733;
+  --border-soft: #2a2825;
+  --ink:         #f0ede6;
+  --ink-soft:    #9a9488;
+  --ink-muted:   #5a554e;
+  --accent:      #c8a96e;
+  --accent-dark: #8a7249;
+  --accent-glow: rgba(200,169,110,0.12);
+  --green:       #5a9e72;
+  --green-bg:    rgba(90,158,114,0.12);
+  --red:         #c05555;
+  --red-bg:      rgba(192,85,85,0.12);
+  --gold:        #c8a046;
+  --gold-bg:     rgba(200,160,70,0.12);
+  --blue:        #5a8ab0;
+  --blue-bg:     rgba(90,138,176,0.12);
+  --radius:      10px;
+  --radius-lg:   16px;
+  --shadow:      0 2px 20px rgba(0,0,0,0.4);
+  --shadow-lg:   0 8px 48px rgba(0,0,0,0.6);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ── SCREENS ────────────────────────────────────────────────────────────────── */
+.screen { display:none; }
+.screen.active { display:block; }
+
+/* ── LOGIN ──────────────────────────────────────────────────────────────────── */
+#login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background:
+    radial-gradient(ellipse 60% 50% at 30% 40%, rgba(200,169,110,0.06) 0%, transparent 70%),
+    var(--bg);
+}
+
+.login-box {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.login-logo {
+  font-family: 'Fraunces', serif;
+  font-size: 1.1rem;
+  font-weight: 300;
+  color: var(--accent);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.login-title {
+  font-family: 'Fraunces', serif;
+  font-size: 2.4rem;
+  font-weight: 400;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+.login-title em {
+  font-style: italic;
+  color: var(--accent);
+}
+
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  box-shadow: var(--shadow-lg);
+}
+
+/* ── FORM ELEMENTS ──────────────────────────────────────────────────────────── */
+.field { display: flex; flex-direction: column; gap: 0.4rem; }
+
+.field label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.field input, .field select, .field textarea {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.7rem 0.9rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%;
+}
+
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.field select option { background: var(--surface2); }
+
+/* ── BUTTONS ────────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.4rem;
+  border: none;
+  border-radius: var(--radius);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #1a1510;
+}
+.btn-primary:hover { background: #d4b87a; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--ink-soft);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+.btn-danger {
+  background: var(--red-bg);
+  color: var(--red);
+  border: 1px solid rgba(192,85,85,0.3);
+}
+.btn-danger:hover { background: rgba(192,85,85,0.2); }
+
+.btn-success {
+  background: var(--green-bg);
+  color: var(--green);
+  border: 1px solid rgba(90,158,114,0.3);
+}
+.btn-success:hover { background: rgba(90,158,114,0.2); }
+
+.btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── APP SHELL ──────────────────────────────────────────────────────────────── */
+#app-screen { min-height: 100vh; display: flex; flex-direction: column; }
+
+.app-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-soft);
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.app-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.app-logo {
+  font-family: 'Fraunces', serif;
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--accent);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.class-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.65rem;
+  border-radius: 2rem;
+  background: var(--accent-glow);
+  color: var(--accent);
+  border: 1px solid rgba(200,169,110,0.25);
+}
+
+.app-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.nav-btn {
+  background: none;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.nav-btn:hover { color: var(--ink); background: var(--surface2); }
+.nav-btn.active { color: var(--accent); background: var(--accent-glow); }
+
+.app-content {
+  flex: 1;
+  padding: 1.5rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ── CLASS SELECT ───────────────────────────────────────────────────────────── */
+#class-select-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.class-select-box {
+  max-width: 500px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  text-align: center;
+}
+
+.class-select-title {
+  font-family: 'Fraunces', serif;
+  font-size: 1.8rem;
+  font-weight: 400;
+  color: var(--ink);
+}
+
+.class-select-sub {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.class-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.class-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2rem 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.class-card:hover {
+  border-color: var(--accent);
+  background: var(--surface2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(200,169,110,0.1);
+}
+
+.class-card-label {
+  font-family: 'Fraunces', serif;
+  font-size: 1.6rem;
+  font-weight: 400;
+  color: var(--accent);
+}
+
+.class-card-sub {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+/* ── PANEL HEADERS ──────────────────────────────────────────────────────────── */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.panel-title {
+  font-family: 'Fraunces', serif;
+  font-size: 1.4rem;
+  font-weight: 400;
+  color: var(--ink);
+}
+
+.panel-sub {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  margin-top: 0.2rem;
+}
+
+/* ── CARDS / SURFACES ───────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  padding: 1.2rem;
+}
+
+.card-sm {
+  background: var(--surface2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 0.8rem 1rem;
+}
+
+/* ── STATUS CHIPS ───────────────────────────────────────────────────────────── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.6rem;
+  border-radius: 2rem;
+}
+
+.chip-green  { background: var(--green-bg);  color: var(--green); }
+.chip-red    { background: var(--red-bg);    color: var(--red); }
+.chip-gold   { background: var(--gold-bg);   color: var(--gold); }
+.chip-blue   { background: var(--blue-bg);   color: var(--blue); }
+.chip-muted  { background: var(--surface3);  color: var(--ink-muted); }
+.chip-accent { background: var(--accent-glow); color: var(--accent); }
+
+/* ── TABLE ──────────────────────────────────────────────────────────────────── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.data-table th {
+  text-align: left;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  border-bottom: 1px solid var(--border-soft);
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: 0.65rem 0.8rem;
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: middle;
+  color: var(--ink);
+}
+
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: var(--surface2); }
+
+/* ── MANAGEMENT TABLE ───────────────────────────────────────────────────────── */
+.mgmt-table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-soft);
+}
+
+.mgmt-table {
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  min-width: 700px;
+  width: 100%;
+}
+
+.mgmt-table th {
+  background: var(--surface2);
+  padding: 0.55rem 0.6rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  text-align: center;
+}
+
+.mgmt-table th:first-child,
+.mgmt-table th:nth-child(2),
+.mgmt-table th:nth-child(3) { text-align: left; }
+
+.mgmt-table td {
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: middle;
+  text-align: center;
+}
+
+.mgmt-table td:first-child,
+.mgmt-table td:nth-child(2),
+.mgmt-table td:nth-child(3) { text-align: left; }
+
+.mgmt-table tr:hover td { background: rgba(200,169,110,0.03); }
+
+.mgmt-input {
+  background: var(--surface2);
+  border: 1px solid transparent;
+  border-radius: 5px;
+  padding: 0.3rem 0.5rem;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.78rem;
+  color: var(--ink);
+  width: 80px;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.mgmt-input:focus {
+  border-color: var(--accent);
+  background: var(--surface3);
+}
+
+.mgmt-input.current-week {
+  border-color: rgba(200,169,110,0.3);
+  color: var(--accent);
+}
+
+/* Level radio buttons */
+.level-group {
+  display: flex;
+  gap: 0.2rem;
+  justify-content: center;
+}
+
+.level-btn {
+  width: 28px;
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface2);
+  color: var(--ink-muted);
+  font-size: 0.65rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.level-btn.active-basic  { background: var(--blue-bg);  color: var(--blue);  border-color: rgba(90,138,176,0.4); }
+.level-btn.active-inter  { background: var(--gold-bg);  color: var(--gold);  border-color: rgba(200,160,70,0.4); }
+.level-btn.active-adv    { background: var(--red-bg);   color: var(--red);   border-color: rgba(192,85,85,0.4); }
+
+/* ── TEST CONTROL ───────────────────────────────────────────────────────────── */
+.test-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1rem 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.test-status-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.test-status-value {
+  font-family: 'Fraunces', serif;
+  font-size: 1.2rem;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: livePulse 1.5s infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.roster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.6rem;
+}
+
+.roster-card {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 0.8rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: border-color 0.15s;
+}
+
+.roster-card.absent {
+  opacity: 0.5;
+  border-color: var(--border-soft);
+}
+
+.roster-card-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.roster-card-eng {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.roster-card-num {
+  font-size: 0.72rem;
+  color: var(--ink-muted);
+  font-family: 'DM Mono', monospace;
+}
+
+.roster-card-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+}
+
+/* ── QUIZ PREVIEW ───────────────────────────────────────────────────────────── */
+.preview-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.preview-student-select {
+  flex: 1;
+  min-width: 200px;
+  max-width: 300px;
+}
+
+.preview-mode-toggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.preview-mode-btn {
+  background: none;
+  border: none;
+  padding: 0.55rem 1rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.preview-mode-btn.active {
+  background: var(--accent);
+  color: #1a1510;
+}
+
+/* Quiz render area — matches student quiz exactly */
+.quiz-render {
+  background: #f0ede6;
+  color: #1c1a14;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.qr-header {
+  background: #faf8f4;
+  border-bottom: 1.5px solid #ddd8cc;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.qr-title { font-family: 'Fraunces', serif; font-size: 1rem; font-weight: 400; color: #1c1a14; }
+.qr-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
+
+.qr-unit-block {
+  padding-bottom: 0.4rem;
+  border-bottom: 2px solid #2a5c8a;
+  margin-bottom: 0.5rem;
+}
+.qr-unit-title { font-family: 'Fraunces', serif; font-size: 1.1rem; font-weight: 600; color: #2a5c8a; }
+
+.qr-section-header {
+  border-left: 4px solid #2a5c8a;
+  padding: 0.4rem 0 0.4rem 0.9rem;
+  margin-bottom: 0.5rem;
+}
+.qr-part { font-size: 0.85rem; font-weight: 600; color: #6b6454; }
+.qr-instruction {
+  background: #e8f0f7;
+  border-radius: 0.5rem;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.88rem;
+  color: #2a5c8a;
+  margin-top: 0.4rem;
+  line-height: 1.5;
+}
+
+.qr-example {
+  background: #F0F7FF;
+  border: 1.5px dashed #2a5c8a;
+  border-radius: 0.5rem;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.88rem;
+}
+
+.qr-example-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #2a5c8a;
+  margin-bottom: 0.4rem;
+}
+
+.qr-q-row {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  gap: 0.4rem 0.6rem;
+  align-items: start;
+}
+
+.qr-q-num { font-size: 0.82rem; color: #6b6454; padding-top: 0.5rem; }
+
+.qr-blank {
+  display: inline-block;
+  min-width: 80px;
+  border-bottom: 2px solid #2a5c8a;
+  margin: 0 2px;
+  vertical-align: bottom;
+}
+
+.qr-answer-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.8rem;
+  border-radius: 0.5rem;
+  font-size: 0.88rem;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.3rem;
+}
+
+.qr-answer-box.correct { background: #e6f4ec; border: 1.5px solid #a3d4b8; }
+.qr-answer-box.wrong   { background: #faeaea; border: 1.5px solid #f0b0b0; }
+
+.qr-answer-given { font-weight: 500; }
+.qr-answer-given.correct { color: #2d7a4f; }
+.qr-answer-given.wrong   { color: #b83232; }
+.qr-answer-correct { font-size: 0.78rem; color: #6b6454; }
+.qr-answer-correct span { color: #2d7a4f; font-weight: 500; }
+
+/* ── FLAGS ──────────────────────────────────────────────────────────────────── */
+.flag-item {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 1rem;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.8rem;
+  align-items: start;
+  transition: border-color 0.15s;
+}
+
+.flag-item:hover { border-color: var(--border); }
+
+.flag-question-text {
+  font-size: 0.88rem;
+  color: var(--ink);
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+}
+
+.flag-answers {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+}
+
+.flag-answer-given { color: var(--red); font-weight: 500; }
+.flag-answer-correct { color: var(--green); }
+.flag-reason { color: var(--ink-muted); font-style: italic; }
+
+.flag-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.score-input {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.35rem 0.6rem;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.82rem;
+  color: var(--ink);
+  width: 70px;
+  text-align: center;
+  outline: none;
+}
+
+.score-input:focus { border-color: var(--accent); }
+
+/* ── HOMEWORK ───────────────────────────────────────────────────────────────── */
+.hw-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--border-soft);
+  transition: background 0.12s;
+}
+
+.hw-row:last-child { border-bottom: none; }
+.hw-row:hover { background: var(--surface2); }
+
+.hw-name {
+  flex: 1;
+  font-size: 0.88rem;
+}
+
+.hw-checks {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.hw-check-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  cursor: pointer;
+  user-select: none;
+}
+
+.hw-check-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* ── TOAST ──────────────────────────────────────────────────────────────────── */
+.toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.7rem 1rem;
+  font-size: 0.85rem;
+  color: var(--ink);
+  box-shadow: var(--shadow-lg);
+  animation: toastIn 0.2s ease, toastOut 0.3s ease 2.7s forwards;
+  max-width: 320px;
+}
+
+.toast.success { border-color: rgba(90,158,114,0.4); color: var(--green); }
+.toast.error   { border-color: rgba(192,85,85,0.4);  color: var(--red); }
+
+@keyframes toastIn  { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+@keyframes toastOut { from { opacity:1; } to { opacity:0; } }
+
+/* ── LOADING ────────────────────────────────────────────────────────────────── */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15,14,12,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  display: none;
+}
+
+.loading-overlay.active { display: flex; }
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── DIVIDER ────────────────────────────────────────────────────────────────── */
+.divider {
+  height: 1px;
+  background: var(--border-soft);
+  margin: 1rem 0;
+}
+
+/* ── EMPTY STATE ────────────────────────────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+}
+
+.empty-state-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+
+/* ── ALERT ──────────────────────────────────────────────────────────────────── */
+.alert {
+  padding: 0.8rem 1rem;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.alert-warning { background: var(--gold-bg);  color: var(--gold);  border: 1px solid rgba(200,160,70,0.3); }
+.alert-info    { background: var(--blue-bg);  color: var(--blue);  border: 1px solid rgba(90,138,176,0.3); }
+.alert-success { background: var(--green-bg); color: var(--green); border: 1px solid rgba(90,158,114,0.3); }
+.alert-error   { background: var(--red-bg);   color: var(--red);   border: 1px solid rgba(192,85,85,0.3); }
+
+/* ── ERROR MSG ──────────────────────────────────────────────────────────────── */
+.error-msg {
+  color: var(--red);
+  font-size: 0.82rem;
+  display: none;
+}
+
+/* ── STICKY TABLE SCROLL ────────────────────────────────────────────────────── */
+.mgmt-table-wrap {
+  position: relative;
+}
+
+.sticky-scrollbar-wrap {
+  position: sticky;
+  bottom: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 12px;
+  background: var(--surface2);
+  border-top: 1px solid var(--border-soft);
+  z-index: 10;
+}
+
+.sticky-scrollbar-inner {
+  height: 1px;
+}
+
+/* ── SCROLLBAR ──────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-dark); }
+
+@media (max-width: 700px) {
+  .app-nav { display: none; }
+  .class-cards { grid-template-columns: 1fr; }
+  .roster-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING OVERLAY -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="spinner"></div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ── LOGIN SCREEN ─────────────────────────────────────────────────────────── -->
+<div class="screen active" id="login-screen">
+  <div class="login-box">
+    <div>
+      <div class="login-logo">Quiz Manager</div>
+      <div class="login-title">Teacher<br><em>Portal</em></div>
+    </div>
+    <div class="login-card">
+      <div class="field">
+        <label>Username</label>
+        <input type="text" id="login-username" placeholder="Enter username"
+          onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="Enter password"
+          onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div class="error-msg" id="login-error"></div>
+      <button class="btn btn-primary" onclick="doLogin()" id="login-btn" style="width:100%;margin-top:0.3rem">
+        Sign in →
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── CLASS SELECT SCREEN ──────────────────────────────────────────────────── -->
+<div class="screen" id="class-select-screen" style="display:none">
+  <div class="class-select-box">
+    <div>
+      <div class="class-select-title">Select a class</div>
+      <div class="class-select-sub" style="margin-top:0.5rem">Which class would you like to manage?</div>
+    </div>
+    <div class="class-cards">
+      <div class="class-card" onclick="selectClass('EWSI')">
+        <div class="class-card-label">EWS I</div>
+        <div class="class-card-sub">Basic level</div>
+      </div>
+      <div class="class-card" onclick="selectClass('EWSIII')">
+        <div class="class-card-label">EWS III</div>
+        <div class="class-card-sub">Advanced level</div>
+      </div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="logout()" style="align-self:center">← Sign out</button>
+  </div>
+</div>
+
+<!-- ── MAIN APP SCREEN ───────────────────────────────────────────────────────── -->
+<div class="screen" id="app-screen" style="display:none">
+  <div class="app-header">
+    <div class="app-header-left">
+      <div class="app-logo">Quiz Manager</div>
+      <div class="class-badge" id="class-badge">—</div>
+    </div>
+    <nav class="app-nav">
+      <button class="nav-btn active" onclick="showPanel('units')"     id="nav-units">📋 Units</button>
+      <button class="nav-btn"        onclick="showPanel('test')"      id="nav-test">🎯 Test</button>
+      <button class="nav-btn"        onclick="showPanel('preview')"   id="nav-preview">👁 Preview</button>
+      <button class="nav-btn"        onclick="showPanel('flags')"     id="nav-flags">🚩 Flags</button>
+      <button class="nav-btn"        onclick="showPanel('homework')"  id="nav-homework">✅ Homework</button>
+    </nav>
+    <div style="display:flex;align-items:center;gap:0.5rem">
+      <button class="btn btn-ghost btn-sm" onclick="goSelectClass()">Switch class</button>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">Sign out</button>
+    </div>
+  </div>
+
+  <!-- Mobile nav -->
+  <div style="display:none;background:var(--surface);border-bottom:1px solid var(--border-soft);padding:0.5rem 1rem;gap:0.25rem;flex-wrap:wrap;" id="mobile-nav">
+    <button class="nav-btn" onclick="showPanel('units')">📋 Units</button>
+    <button class="nav-btn" onclick="showPanel('test')">🎯 Test</button>
+    <button class="nav-btn" onclick="showPanel('preview')">👁 Preview</button>
+    <button class="nav-btn" onclick="showPanel('flags')">🚩 Flags</button>
+    <button class="nav-btn" onclick="showPanel('homework')">✅ Homework</button>
+  </div>
+
+  <div class="app-content">
+
+    <!-- ── UNITS PANEL ────────────────────────────────────────────────────── -->
+    <div id="panel-units">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Unit Entry</div>
+          <div class="panel-sub">Update student unit assignments and level settings</div>
+        </div>
+        <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:0.5rem">
+            <span style="font-size:0.82rem;color:var(--ink-soft)">Week:</span>
+            <input type="number" id="week-num-input" min="1" max="30" style="width:60px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:0.4rem 0.5rem;font-family:'DM Mono',monospace;font-size:0.9rem;color:var(--accent);text-align:center;outline:none;" onchange="markDirty()">
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="loadUnits()">↺ Refresh</button>
+          <button class="btn btn-primary" onclick="saveUnits()" id="save-units-btn">Save Changes</button>
+        </div>
+      </div>
+
+      <div class="alert alert-info" style="margin-bottom:1rem;font-size:0.8rem">
+        💡 Enter unit numbers separated by semicolons (e.g. <code style="font-family:'DM Mono',monospace;background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:3px">9;67</code>). Enter <code style="font-family:'DM Mono',monospace;background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:3px">0</code> for review-only. Leave blank to skip.
+      </div>
+
+      <div class="mgmt-table-wrap">
+        <table class="mgmt-table" id="units-table">
+          <thead id="units-thead"></thead>
+          <tbody id="units-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── TEST PANEL ─────────────────────────────────────────────────────── -->
+    <div id="panel-test" style="display:none">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Test Controls</div>
+          <div class="panel-sub">Start/stop the quiz and manage student status</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="loadTestControl()">↺ Refresh</button>
+      </div>
+
+      <div class="test-status-bar" id="test-status-bar">
+        <div>
+          <div class="test-status-label">Week</div>
+          <div class="test-status-value" id="test-week-display">—</div>
+        </div>
+        <div>
+          <div class="test-status-label">Status</div>
+          <div class="test-status-value" id="test-status-display">—</div>
+        </div>
+        <div>
+          <div class="test-status-label">Started at</div>
+          <div class="test-status-value" id="test-starttime-display" style="font-size:0.9rem">—</div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:0.5rem;flex-wrap:wrap">
+          <button class="btn btn-success" onclick="doStartQuiz()" id="start-quiz-btn">▶ Start Quiz</button>
+          <button class="btn btn-danger"  onclick="doStopQuiz()"  id="stop-quiz-btn">⏹ Force End</button>
+          <button class="btn btn-ghost btn-sm" onclick="doResetControl()" id="reset-ctrl-btn">↺ Reset</button>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
+        <div style="font-size:0.82rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-muted)">
+          Student Status
+        </div>
+        <div style="margin-left:auto;display:flex;gap:0.5rem">
+          <span class="chip chip-green">● Submitted</span>
+          <span class="chip chip-blue">● Logged in</span>
+          <span class="chip chip-muted">● Waiting</span>
+          <span class="chip chip-red">● Absent</span>
+        </div>
+      </div>
+
+      <div class="roster-grid" id="test-roster-grid"></div>
+    </div>
+
+    <!-- ── PREVIEW PANEL ──────────────────────────────────────────────────── -->
+    <div id="panel-preview" style="display:none">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Quiz Preview</div>
+          <div class="panel-sub">View any student's quiz exactly as they see it</div>
+        </div>
+      </div>
+
+      <div class="preview-toolbar">
+        <div class="preview-student-select">
+          <select class="field" id="preview-student-select" onchange="loadPreview()" style="margin:0">
+            <option value="">— Select a student —</option>
+          </select>
+        </div>
+        <div class="preview-mode-toggle">
+          <button class="preview-mode-btn active" id="preview-mode-quiz" onclick="setPreviewMode('quiz')">Quiz view</button>
+          <button class="preview-mode-btn" id="preview-mode-answers" onclick="setPreviewMode('answers')">Answer view</button>
+        </div>
+      </div>
+
+      <div id="preview-content">
+        <div class="empty-state">
+          <div class="empty-state-icon">👁</div>
+          Select a student to preview their quiz
+        </div>
+      </div>
+    </div>
+
+    <!-- ── FLAGS PANEL ────────────────────────────────────────────────────── -->
+    <div id="panel-flags" style="display:none">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Flag Review</div>
+          <div class="panel-sub">Review and resolve flagged questions</div>
+        </div>
+        <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+          <select id="flags-week-select" class="field" style="width:120px;margin:0" onchange="loadFlags()">
+            <option value="">Week…</option>
+          </select>
+          <select id="flags-student-filter" class="field" style="width:180px;margin:0" onchange="renderFlags()">
+            <option value="">All students</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="loadFlags()">↺ Refresh</button>
+          <button class="btn btn-primary" onclick="batchSaveFlags()" id="batch-save-btn">Save All Changes</button>
+        </div>
+      </div>
+
+      <div id="flags-content">
+        <div class="empty-state">
+          <div class="empty-state-icon">🚩</div>
+          Select a week to view flags
+        </div>
+      </div>
+    </div>
+
+    <!-- ── HOMEWORK PANEL ─────────────────────────────────────────────────── -->
+    <div id="panel-homework" style="display:none">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Homework Check</div>
+          <div class="panel-sub">Mark practice questions and flashcard completion</div>
+        </div>
+        <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+          <select id="hw-week-select" class="field" style="width:120px;margin:0" onchange="loadHomework()">
+            <option value="">Week…</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="toggleAllHomework(true)">Check all</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleAllHomework(false)">Uncheck all</button>
+          <button class="btn btn-primary" onclick="saveHomework()" id="hw-save-btn">Save</button>
+        </div>
+      </div>
+
+      <div id="hw-content">
+        <div class="empty-state">
+          <div class="empty-state-icon">✅</div>
+          Select a week to view homework status
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /app-content -->
+</div><!-- /app-screen -->
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const API = 'https://script.google.com/macros/s/AKfycbxK_tWBLFgwR0ZSb09UWxY9Il887C01hhM4RWj-gJR3Xr6We_Xtfi77LiI1h6nf-Jm7/exec';
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let authToken   = sessionStorage.getItem('tp_token') || '';
+let authUser    = sessionStorage.getItem('tp_user')  || '';
+let currentClass = sessionStorage.getItem('tp_class') || '';
+let mgmtData    = null;   // cached management data
+let rosterData  = null;   // cached roster
+let previewData = null;   // cached quiz preview
+let flagsData   = [];     // cached flags for current week
+let isDirty     = false;  // unsaved changes in units panel
+
+// ── SHOW/HIDE SCREENS ─────────────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('active');
+    s.style.display = 'none';
+  });
+  const el = document.getElementById(id);
+  el.classList.add('active');
+  el.style.display = '';
+  window.scrollTo(0, 0);
+}
+
+// ── LOADING ───────────────────────────────────────────────────────────────────
+function setLoading(on) {
+  document.getElementById('loading-overlay').classList.toggle('active', on);
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function toast(msg, type = '') {
+  const t = document.createElement('div');
+  t.className = 'toast' + (type ? ' ' + type : '');
+  t.textContent = msg;
+  document.getElementById('toast-container').appendChild(t);
+  setTimeout(() => t.remove(), 3100);
+}
+
+// ── API CALL ──────────────────────────────────────────────────────────────────
+function xhrGet(url) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.onload = () => {
+      try { resolve(JSON.parse(xhr.responseText)); }
+      catch(e) { reject(new Error('Invalid response: ' + xhr.responseText.slice(0, 100))); }
+    };
+    xhr.onerror = () => reject(new Error('Network error'));
+    xhr.send();
+  });
+}
+
+async function api(params, method = 'GET', body = null) {
+  const allParams = { ...params, token: authToken, class: currentClass };
+  if (body) {
+    allParams.data = JSON.stringify(body);
+    if (body.action) allParams.action = body.action;
+  }
+  const url = API + '?' + new URLSearchParams(allParams).toString();
+  const data = await xhrGet(url);
+  if (!data.ok) throw new Error(data.error || 'API error');
+  return data;
+}
+
+// ── LOGIN ─────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value.trim();
+  const errEl = document.getElementById('login-error');
+  const btn   = document.getElementById('login-btn');
+  errEl.style.display = 'none';
+
+  if (!username || !password) { errEl.textContent = 'Please enter username and password.'; errEl.style.display = 'block'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Signing in…';
+
+  try {
+    const params = new URLSearchParams({ action: 'loginGet', username, password });
+    const data = await xhrGet(API + '?' + params.toString());
+    console.log('Login response:', JSON.stringify(data));
+    console.log('data.ok:', data.ok, 'token:', data.token);
+    if (!data.ok) throw new Error(data.error || 'Login failed');
+
+    authToken = data.token;
+    authUser  = data.username;
+    sessionStorage.setItem('tp_token', authToken);
+    sessionStorage.setItem('tp_user',  authUser);
+    console.log('Showing class select screen');
+    showScreen('class-select-screen');
+  } catch(e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Sign in →';
+  }
+}
+
+function logout() {
+  authToken = ''; authUser = ''; currentClass = '';
+  sessionStorage.clear();
+  showScreen('login-screen');
+}
+
+// ── CLASS SELECT ──────────────────────────────────────────────────────────────
+async function selectClass(cls) {
+  currentClass = cls;
+  sessionStorage.setItem('tp_class', cls);
+  document.getElementById('class-badge').textContent =
+    cls === 'EWSI' ? 'EWS I' : 'EWS III';
+  showScreen('app-screen');
+  showPanel('units');
+  await Promise.all([loadRoster(), loadWeeks()]);
+  loadUnits();
+}
+
+function goSelectClass() {
+  showScreen('class-select-screen');
+}
+
+// ── NAV PANELS ────────────────────────────────────────────────────────────────
+const PANELS = ['units','test','preview','flags','homework'];
+
+function showPanel(name) {
+  PANELS.forEach(p => {
+    document.getElementById('panel-' + p).style.display = p === name ? 'block' : 'none';
+    const btn = document.getElementById('nav-' + p);
+    if (btn) btn.classList.toggle('active', p === name);
+  });
+
+  if (name === 'test')     loadTestControl();
+  if (name === 'preview')  loadPreviewStudentList();
+  if (name === 'flags')    loadWeeks();
+  if (name === 'homework') loadWeeks();
+}
+
+// ── LOAD ROSTER ───────────────────────────────────────────────────────────────
+async function loadRoster() {
+  try {
+    const data = await api({ action: 'getRoster' });
+    rosterData = data.roster;
+  } catch(e) {
+    console.warn('Roster load failed:', e.message);
+  }
+}
+
+// ── LOAD WEEKS ────────────────────────────────────────────────────────────────
+async function loadWeeks() {
+  try {
+    const data = await api({ action: 'getWeeks' });
+    const weeks = data.weeks || [];
+
+    ['flags-week-select', 'hw-week-select'].forEach(id => {
+      const sel = document.getElementById(id);
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">Week…</option>' +
+        weeks.map(w => `<option value="${w}"${w===cur?' selected':''}>Week ${w}</option>`).join('');
+    });
+  } catch(e) { /* silent */ }
+}
+
+// ── ═══════════════════════════════════════════════════════════════════════════
+// ── UNITS PANEL ───────────────────────────────────────────────────────────────
+// ── ═══════════════════════════════════════════════════════════════════════════
+
+async function loadUnits() {
+  setLoading(true);
+  try {
+    const data = await api({ action: 'getManagement' });
+    mgmtData = data;
+    renderUnitsTable(data);
+    setTimeout(initStickyScrollbar, 100);
+    isDirty = false;
+    document.getElementById('save-units-btn').textContent = 'Save Changes';
+  } catch(e) {
+    toast('Failed to load units: ' + e.message, 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
+function markDirty() {
+  isDirty = true;
+  document.getElementById('save-units-btn').textContent = 'Save Changes *';
+}
+
+function renderUnitsTable(data) {
+  document.getElementById('week-num-input').value = data.weekNum || '';
+
+  const thead = document.getElementById('units-thead');
+  const tbody = document.getElementById('units-tbody');
+
+  // Build header — Student, Name, Level, then week columns
+  const currentWeekIdx = data.weekNum ? Number(data.weekNum) - 1 : -1;
+
+  let thHtml = '<tr>' +
+    '<th>Student #</th><th>Name (JPN)</th><th>Name (ENG)</th><th>Level</th>';
+
+  data.weekHeaders.forEach((wh, idx) => {
+    const isCurrent = idx === currentWeekIdx;
+    thHtml += `<th style="${isCurrent ? 'color:var(--accent);background:var(--accent-glow)' : ''}">${wh || 'Wk '+(idx+1)}</th>`;
+  });
+  thHtml += '</tr>';
+  thead.innerHTML = thHtml;
+
+  // Build rows
+  tbody.innerHTML = '';
+  (data.students || []).forEach(s => {
+    const tr = document.createElement('tr');
+
+    // Level buttons
+    const levelHtml = `<div class="level-group">
+      <button class="level-btn ${s.basic ? 'active-basic' : ''}" onclick="setLevel(${s.row},'basic')" title="Basic">B</button>
+      <button class="level-btn ${s.inter ? 'active-inter' : ''}" onclick="setLevel(${s.row},'inter')" title="Intermediate">I</button>
+      <button class="level-btn ${s.adv   ? 'active-adv'   : ''}" onclick="setLevel(${s.row},'adv')"   title="Advanced">A</button>
+    </div>`;
+
+    // Unit inputs
+    let unitCells = '';
+    s.units.forEach((u, idx) => {
+      const isCurrent = idx === currentWeekIdx;
+      unitCells += `<td><input class="mgmt-input${isCurrent?' current-week':''}" 
+        data-row="${s.row}" data-unitidx="${idx}"
+        value="${u}" onchange="markDirty()" 
+        title="Week ${idx+1} units"></td>`;
+    });
+
+    tr.innerHTML =
+      `<td style="font-family:'DM Mono',monospace;font-size:0.8rem;color:var(--ink-muted)">${s.num}</td>` +
+      `<td style="color:var(--ink-soft);font-size:0.82rem">${s.jpn}</td>` +
+      `<td style="font-weight:500">${s.eng}</td>` +
+      `<td>${levelHtml}</td>` +
+      unitCells;
+
+    tbody.appendChild(tr);
+  });
+}
+
+function setLevel(row, level) {
+  // Find the student, update level, rerender that row's buttons
+  const s = mgmtData.students.find(s => s.row === row);
+  if (!s) return;
+  s.basic = level === 'basic';
+  s.inter = level === 'inter';
+  s.adv   = level === 'adv';
+  markDirty();
+
+  // Update button styles in DOM
+  const tr = document.querySelector(`[data-row="${row}"]`)?.closest('tr');
+  if (!tr) return;
+  const btns = tr.querySelectorAll('.level-btn');
+  btns[0].className = `level-btn ${s.basic ? 'active-basic' : ''}`;
+  btns[1].className = `level-btn ${s.inter ? 'active-inter' : ''}`;
+  btns[2].className = `level-btn ${s.adv   ? 'active-adv'   : ''}`;
+}
+
+async function saveUnits() {
+  const weekNum = document.getElementById('week-num-input').value;
+
+  // Collect updated unit values from inputs
+  const students = [];
+  const rows = {};
+
+  document.querySelectorAll('.mgmt-input').forEach(input => {
+    const row = parseInt(input.dataset.row);
+    const idx = parseInt(input.dataset.unitidx);
+    if (!rows[row]) rows[row] = { row, units: [] };
+    rows[row].units[idx] = input.value.trim();
+  });
+
+  // Merge level data from mgmtData
+  mgmtData.students.forEach(s => {
+    const entry = rows[s.row] || { row: s.row, units: s.units };
+    students.push({
+      row:   s.row,
+      basic: s.basic,
+      inter: s.inter,
+      adv:   s.adv,
+      units: entry.units
+    });
+  });
+
+  setLoading(true);
+  try {
+    await api({}, 'POST', { action: 'saveManagement', weekNum, students });
+    isDirty = false;
+    document.getElementById('save-units-btn').textContent = 'Save Changes';
+    toast('Units saved successfully', 'success');
+  } catch(e) {
+    toast('Save failed: ' + e.message, 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ── ═══════════════════════════════════════════════════════════════════════════
+// ── TEST PANEL ────────────────────────────────────────────────────────────────
+// ── ═══════════════════════════════════════════════════════════════════════════
+
+let testControlData = null;
+
+async function loadTestControl() {
+  setLoading(true);
+  try {
+    const [ctrl, roster] = await Promise.all([
+      api({ action: 'getTestControl' }),
+      rosterData ? Promise.resolve({ roster: rosterData }) : api({ action: 'getRoster' })
+    ]);
+    testControlData = ctrl;
+    if (!rosterData) rosterData = roster.roster;
+
+    renderTestControl(ctrl);
+  } catch(e) {
+    toast('Failed to load test control: ' + e.message, 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
+function renderTestControl(ctrl) {
+  document.getElementById('test-week-display').textContent = ctrl.currentWeek || '—';
+
+  const statusEl = document.getElementById('test-status-display');
+  if (ctrl.started) {
+    statusEl.innerHTML = '<span class="live-dot"></span> Live';
+    statusEl.style.color = 'var(--green)';
+  } else {
+    statusEl.textContent = 'Not started';
+    statusEl.style.color = 'var(--ink-muted)';
+  }
+
+  const startEl = document.getElementById('test-starttime-display');
+  startEl.textContent = ctrl.startTime
+    ? new Date(ctrl.startTime).toLocaleTimeString()
+    : '—';
+
+  document.getElementById('start-quiz-btn').disabled = ctrl.started;
+  document.getElementById('stop-quiz-btn').disabled  = !ctrl.started;
+
+  // Render roster grid
+  const grid = document.getElementById('test-roster-grid');
+  grid.innerHTML = '';
+  (rosterData || []).forEach(s => {
+    const status = ctrl.studentStatus[String(s.num)] || {};
+    const absent = s.absent;
+
+    let chipHtml = '';
+    if (absent) {
+      chipHtml = '<span class="chip chip-red">Absent</span>';
+    } else if (status.submitted) {
+      chipHtml = '<span class="chip chip-green">Submitted</span>';
+    } else if (status.loggedIn) {
+      chipHtml = '<span class="chip chip-blue">Logged in</span>';
+    } else {
+      chipHtml = '<span class="chip chip-muted">Waiting</span>';
+    }
+
+    const card = document.createElement('div');
+    card.className = 'roster-card' + (absent ? ' absent' : '');
+    card.innerHTML =
+      `<label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+        <input type="checkbox" ${absent ? 'checked' : ''} 
+          onchange="toggleAbsent(${s.row}, this.checked)"
+          title="Mark absent"
+          style="accent-color:var(--red);width:14px;height:14px">
+      </label>
+      <div class="roster-card-name">
+        <div class="roster-card-eng">${s.eng}</div>
+        <div class="roster-card-num">${s.num}</div>
+      </div>
+      <div class="roster-card-status">${chipHtml}</div>`;
+    grid.appendChild(card);
+  });
+}
+
+async function toggleAbsent(row, absent) {
+  try {
+    await api({}, 'POST', { action: 'setAbsent', updates: [{ row, absent }] });
+    // Update local roster
+    const s = rosterData.find(r => r.row === row);
+    if (s) s.absent = absent;
+  } catch(e) {
+    toast('Failed to update: ' + e.message, 'error');
+  }
+}
+
+async function doStartQuiz() {
+  if (!confirm('Start the quiz? Students will be able to begin.')) return;
+  setLoading(true);
+  try {
+    await api({}, 'POST', { action: 'startQuiz' });
+    toast('Quiz started!', 'success');
+    await loadTestControl();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function doStopQuiz() {
+  if (!confirm('Force end the quiz? All waiting students will see their results.')) return;
+  setLoading(true);
+  try {
+    await api({}, 'POST', { action: 'stopQuiz' });
+    toast('Quiz ended', 'success');
+    await loadTestControl();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function doResetControl() {
+  if (!confirm('Reset Test Control? This clears all login/submission tracking for a new week.')) return;
+  setLoading(true);
+  try {
+    await api({}, 'POST', { action: 'resetTestControl' });
+    toast('Test Control reset', 'success');
+    await loadTestControl();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ── ═══════════════════════════════════════════════════════════════════════════
+// ── PREVIEW PANEL ─────────────────────────────────────────────────────────────
+// ── ═══════════════════════════════════════════════════════════════════════════
+
+let previewMode = 'quiz';
+let previewQuestions = null;
+
+function loadPreviewStudentList() {
+  const sel = document.getElementById('preview-student-select');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Select a student —</option>';
+  (rosterData || []).forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.num;
+    opt.textContent = s.eng + ' (' + s.num + ')';
+    if (String(s.num) === String(cur)) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+async function loadPreview() {
+  const num = document.getElementById('preview-student-select').value;
+  if (!num) {
+    document.getElementById('preview-content').innerHTML =
+      '<div class="empty-state"><div class="empty-state-icon">👁</div>Select a student to preview their quiz</div>';
+    previewQuestions = null;
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const data = await api({ action: 'getQuizData', student: num });
+    previewQuestions = data.questions;
+    previewData = data;
+    renderPreview();
+  } catch(e) {
+    document.getElementById('preview-content').innerHTML =
+      `<div class="alert alert-error">${e.message}</div>`;
+  } finally {
+    setLoading(false);
+  }
+}
+
+function setPreviewMode(mode) {
+  previewMode = mode;
+  document.getElementById('preview-mode-quiz').classList.toggle('active', mode === 'quiz');
+  document.getElementById('preview-mode-answers').classList.toggle('active', mode === 'answers');
+  if (previewQuestions) renderPreview();
+}
+
+function renderPreview() {
+  const qs = previewQuestions;
+  if (!qs || qs.length === 0) return;
+
+  const showAnswers = previewMode === 'answers';
+  let html = `<div class="quiz-render">
+    <div class="qr-header">
+      <div class="qr-title">Week ${previewData.week} — Grammar Quiz</div>
+      <div style="font-size:0.8rem;color:#6b6454">${previewData.name}</div>
+    </div>
+    <div class="qr-body">`;
+
+  let lastUnit = null, lastPart = null;
+  let displayNum = 0;
+  let i = 0;
+
+  while (i < qs.length) {
+    const q = qs[i];
+
+    // Section headers
+    if (q.unit !== lastUnit || q.part !== lastPart) {
+      if (q.unit !== lastUnit) {
+        html += `<div class="qr-unit-block"><div class="qr-unit-title">${q.unit}</div></div>`;
+        lastUnit = q.unit;
+      }
+      html += `<div class="qr-section-header">
+        <div class="qr-part">${q.part}</div>
+        <div class="qr-instruction">${q.instruction}</div>
+      </div>`;
+      lastPart = q.part;
+    }
+
+    // Example
+    if (q.isExample) {
+      const exFmt = formatQPreview(q.question, q.blankIndex !== undefined && q.blankIndex !== null ? 'double' : 'single');
+      let exAnsHtml = '';
+      const blankCount = (q.question.match(/_{3,}/g) || []).length;
+      if (blankCount >= 2 && q.answer && q.answer.indexOf(',') !== -1) {
+        const parts = q.answer.split(',');
+        const a1 = parts[0].trim().split(' / ')[0];
+        const a2 = parts.slice(1).join(',').trim().split(' / ')[0];
+        exAnsHtml = `<div style="display:flex;flex-direction:column;gap:4px;margin-top:6px">
+          <div style="display:flex;align-items:center;gap:6px"><span style="color:#2a5c8a;font-weight:600">①</span>
+          <span style="background:#e8f0f7;color:#2a5c8a;padding:2px 8px;border-radius:4px;font-size:0.85rem">${a1}</span></div>
+          <div style="display:flex;align-items:center;gap:6px"><span style="color:#2a5c8a;font-weight:600">②</span>
+          <span style="background:#e8f0f7;color:#2a5c8a;padding:2px 8px;border-radius:4px;font-size:0.85rem">${a2}</span></div>
+        </div>`;
+      } else {
+        const ans = (q.answer || '').split(' / ')[0];
+        exAnsHtml = `<span style="background:#2a5c8a;color:#fff;padding:1px 8px;border-radius:4px;font-size:0.85rem;margin-top:4px;display:inline-block">${ans}</span>`;
+      }
+      html += `<div class="qr-example">
+        <div class="qr-example-label">📝 Example（例）</div>
+        <div style="margin-bottom:0.4rem;font-size:0.9rem">${formatQPreview(q.question, 'auto')}</div>
+        ${exAnsHtml}
+      </div>`;
+      i++;
+      continue;
+    }
+
+    // Check double-blank pair
+    const isPair = q.blankIndex === 0 && i + 1 < qs.length &&
+      qs[i+1].blankIndex === 1 && qs[i+1].question === q.question;
+
+    displayNum++;
+
+    if (isPair) {
+      const q2 = qs[i + 1];
+      html += `<div class="qr-q-row">
+        <div class="qr-q-num">${displayNum}.</div>
+        <div>
+          <div style="font-size:0.95rem;line-height:1.6;color:#1c1a14;margin-bottom:6px">${formatQPreview(q.question, 'double')}</div>`;
+
+      if (showAnswers) {
+        html += renderAnswerBoxes([q, q2], true);
+      } else {
+        html += `<div style="display:flex;flex-direction:column;gap:5px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-weight:600;color:#2a5c8a">①</span>
+            <div style="flex:1;height:34px;border:1.5px solid #ddd8cc;border-radius:6px;background:white"></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-weight:600;color:#2a5c8a">②</span>
+            <div style="flex:1;height:34px;border:1.5px solid #ddd8cc;border-radius:6px;background:white"></div>
+          </div>
+        </div>`;
+      }
+      html += `</div></div>`;
+      i += 2;
+    } else {
+      html += `<div class="qr-q-row">
+        <div class="qr-q-num">${displayNum}.</div>
+        <div>
+          <div style="font-size:0.95rem;line-height:1.6;color:#1c1a14;margin-bottom:6px">${formatQPreview(q.question, 'single')}</div>`;
+      if (showAnswers) {
+        html += `<div style="background:#e8f0f7;color:#2a5c8a;padding:0.5rem 0.8rem;border-radius:6px;font-size:0.88rem;font-weight:500">${q.answer}</div>`;
+      } else {
+        html += `<div style="height:34px;border:1.5px solid #ddd8cc;border-radius:6px;background:white"></div>`;
+      }
+      html += `</div></div>`;
+      i++;
+    }
+  }
+
+  html += '</div></div>';
+  document.getElementById('preview-content').innerHTML = html;
+}
+
+function renderAnswerBoxes(qs, double) {
+  const markers = ['①', '②'];
+  return qs.map((q, idx) => {
+    const ans = q.answer;
+    return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+      ${double ? `<span style="font-weight:600;color:#2a5c8a">${markers[idx]}</span>` : ''}
+      <div style="flex:1;background:#e6f4ec;border:1.5px solid #a3d4b8;border-radius:6px;padding:0.4rem 0.7rem;font-size:0.85rem;color:#2d7a4f;font-weight:500">${ans}</div>
+    </div>`;
+  }).join('');
+}
+
+function formatQPreview(q, mode) {
+  // mode: 'single', 'double', 'auto'
+  const blankCount = (q.match(/_{3,}/g) || []).length;
+  const isDouble = mode === 'double' || (mode === 'auto' && blankCount >= 2);
+  let bn = 0;
+  const markers = ['①', '②'];
+  return q.replace(/_{3,}/g, () => {
+    const m = isDouble ? `<span style="white-space:nowrap">${markers[bn] || ''}<span style="display:inline-block;min-width:70px;border-bottom:2px solid #2a5c8a;margin:0 2px;vertical-align:bottom">&nbsp;</span></span>` :
+      `<span style="display:inline-block;min-width:70px;border-bottom:2px solid #2a5c8a;margin:0 2px;vertical-align:bottom">&nbsp;</span>`;
+    bn++;
+    return m;
+  });
+}
+
+// ── ═══════════════════════════════════════════════════════════════════════════
+// ── FLAGS PANEL ───────────────────────────────────────────────────────────────
+// ── ═══════════════════════════════════════════════════════════════════════════
+
+async function loadFlags() {
+  const week = document.getElementById('flags-week-select').value;
+  if (!week) return;
+
+  setLoading(true);
+  try {
+    const data = await api({ action: 'getFlags', week });
+    flagsData = data.flags || [];
+    populateFlagsStudentFilter();
+    renderFlags();
+  } catch(e) {
+    toast('Failed to load flags: ' + e.message, 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
+function populateFlagsStudentFilter() {
+  const students = [...new Set(flagsData.map(f => f.studentNum + '|' + f.studentName))];
+  const sel = document.getElementById('flags-student-filter');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">All students</option>' +
+    students.map(s => {
+      const [num, name] = s.split('|');
+      return `<option value="${num}"${num===cur?' selected':''}>${name} (${num})</option>`;
+    }).join('');
+}
+
+function renderFlags() {
+  const studentFilter = document.getElementById('flags-student-filter').value;
+  const filtered = studentFilter
+    ? flagsData.filter(f => f.studentNum === studentFilter)
+    : flagsData;
+
+  const content = document.getElementById('flags-content');
+
+  if (filtered.length === 0) {
+    content.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✓</div>No flags for this selection</div>';
+    return;
+  }
+
+  // Group by student
+  const byStudent = {};
+  filtered.forEach(f => {
+    const key = f.studentNum;
+    if (!byStudent[key]) byStudent[key] = { name: f.studentName, num: f.studentNum, flags: [] };
+    byStudent[key].flags.push(f);
+  });
+
+  let html = '';
+  Object.values(byStudent).forEach(student => {
+    html += `<div style="margin-bottom:1.5rem">
+      <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;padding-bottom:0.5rem;border-bottom:1px solid var(--border-soft)">
+        <span style="font-weight:600;font-size:0.9rem">${student.name}</span>
+        <span style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--ink-muted)">${student.num}</span>
+        <span class="chip chip-gold">${student.flags.length} flag${student.flags.length>1?'s':''}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0.6rem">`;
+
+    student.flags.forEach(f => {
+      const statusChip = f.status === 'Approved' ? 'chip-green' :
+                         f.status === 'Rejected'  ? 'chip-red'  : 'chip-gold';
+
+      html += `<div class="flag-item" id="flag-row-${f.row}">
+        <div>
+          <div class="flag-question-text">${f.question}</div>
+          <div class="flag-answers">
+            <span>Given: <span class="flag-answer-given">${f.studentAnswer || '(empty)'}</span></span>
+            <span>Correct: <span class="flag-answer-correct">${f.correctAnswer}</span></span>
+            <span>Auto score: <strong>${f.autoScore}</strong></span>
+          </div>
+          ${f.flagReason ? `<div class="flag-reason" style="margin-top:0.4rem">💬 "${f.flagReason}"</div>` : ''}
+        </div>
+        <div class="flag-controls">
+          <span class="chip ${statusChip}" id="flag-status-chip-${f.row}">${f.status}</span>
+          <div style="display:flex;gap:0.4rem">
+            <button class="btn btn-success btn-sm" onclick="setFlagStatus(${f.row},'Approved')">✓ Approve</button>
+            <button class="btn btn-danger btn-sm" onclick="setFlagStatus(${f.row},'Rejected')">✗ Reject</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--ink-muted)">
+            <span>Score:</span>
+            <input type="number" class="score-input" id="flag-score-${f.row}"
+              value="${f.correctedScore !== '' ? f.correctedScore : f.autoScore}"
+              min="0" max="1" step="0.5"
+              onchange="markFlagDirty(${f.row})">
+          </div>
+        </div>
+      </div>`;
+    });
+
+    html += '</div></div>';
+  });
+
+  content.innerHTML = html;
+}
+
+function setFlagStatus(row, status) {
+  // Update chip immediately for feedback
+  const chip = document.getElementById('flag-status-chip-' + row);
+  if (chip) {
+    chip.textContent = status;
+    chip.className = 'chip ' + (status === 'Approved' ? 'chip-green' : 'chip-red');
+  }
+  // Mark in data
+  const f = flagsData.find(f => f.row === row);
+  if (f) f.status = status;
+}
+
+function markFlagDirty(row) {
+  const f = flagsData.find(f => f.row === row);
+  if (f) {
+    const input = document.getElementById('flag-score-' + row);
+    if (input) f.correctedScore = input.value;
+  }
+}
+
+async function batchSaveFlags() {
+  const updates = flagsData.map(f => {
+    const scoreInput = document.getElementById('flag-score-' + f.row);
+    return {
+      row: f.row,
+      status: f.status,
+      correctedScore: scoreInput ? scoreInput.value : f.correctedScore
+    };
+  });
+
+  setLoading(true);
+  try {
+    const result = await api({}, 'POST', { action: 'batchUpdateFlags', updates });
+    toast(`Saved ${result.updated} flag(s)`, 'success');
+  } catch(e) {
+    toast('Save failed: ' + e.message, 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ── ═══════════════════════════════════════════════════════════════════════════
+// ── HOMEWORK PANEL ────────────────────────────────────────────────────────────
+// ── ═══════════════════════════════════════════════════════════════════════════
+
+let hwData = null;
+
+async function loadHomework() {
+  const week = document.getElementById('hw-week-select').value;
+  if (!week) return;
+
+  setLoading(true);
+  try {
+    const data = await api({ action: 'getGradesInput', week });
+    hwData = data;
+    renderHomework(week, data);
+  } catch(e) {
+    toast('Failed to load homework: ' + e.message, 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
+function renderHomework(week, data) {
+  const content = document.getElementById('hw-content');
+
+  if (!data.hasGradesInput) {
+    content.innerHTML = `<div class="alert alert-warning">
+      ⚠️ Grades Input for Week ${week} doesn't exist yet. Run <strong>Update Grades Input</strong> from the Quiz Manager menu in Google Sheets first.
+    </div>`;
+    return;
+  }
+
+  let html = `<div class="card" style="overflow:hidden">
+    <div style="display:grid;grid-template-columns:1fr 120px 120px;gap:0.5rem;padding:0.5rem 0.8rem;background:var(--surface2);border-bottom:1px solid var(--border-soft)">
+      <span style="font-size:0.7rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-muted)">Student</span>
+      <span style="font-size:0.7rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-muted);text-align:center">Practice Q</span>
+      <span style="font-size:0.7rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-muted);text-align:center">Flashcard</span>
+    </div>`;
+
+  data.roster.forEach(s => {
+    const hw = data.hwStatus[s.num] || { practiceQ: true, flashcard: true };
+    html += `<div class="hw-row">
+      <div class="hw-name">
+        <div style="font-size:0.88rem;font-weight:500">${s.eng}</div>
+        <div style="font-size:0.72rem;color:var(--ink-muted);font-family:'DM Mono',monospace">${s.num}</div>
+      </div>
+      <div style="display:flex;justify-content:center">
+        <input type="checkbox" ${hw.practiceQ ? 'checked' : ''} 
+          id="hw-pq-${s.num}" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer">
+      </div>
+      <div style="display:flex;justify-content:center">
+        <input type="checkbox" ${hw.flashcard ? 'checked' : ''}
+          id="hw-fc-${s.num}" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer">
+      </div>
+    </div>`;
+  });
+
+  html += '</div>';
+  content.innerHTML = html;
+}
+
+function toggleAllHomework(checked) {
+  if (!hwData) return;
+  hwData.roster.forEach(s => {
+    const pq = document.getElementById('hw-pq-' + s.num);
+    const fc = document.getElementById('hw-fc-' + s.num);
+    if (pq) pq.checked = checked;
+    if (fc) fc.checked = checked;
+  });
+}
+
+async function saveHomework() {
+  const week = document.getElementById('hw-week-select').value;
+  if (!week || !hwData) return;
+
+  const updates = hwData.roster.map(s => ({
+    studentNum: s.num,
+    practiceQ: document.getElementById('hw-pq-' + s.num)?.checked ?? true,
+    flashcard:  document.getElementById('hw-fc-' + s.num)?.checked ?? true
+  }));
+
+  setLoading(true);
+  try {
+    await api({}, 'POST', { action: 'saveHomework', week, updates });
+    toast('Homework saved!', 'success');
+  } catch(e) {
+    toast('Save failed: ' + e.message, 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ── STICKY SCROLLBAR SYNC ────────────────────────────────────────────────────
+function initStickyScrollbar() {
+  const wrap = document.querySelector('.mgmt-table-wrap');
+  const sticky = document.getElementById('sticky-scroll');
+  const inner = document.getElementById('sticky-scroll-inner');
+  if (!wrap || !sticky || !inner) return;
+
+  // Match inner width to table scroll width
+  inner.style.width = wrap.scrollWidth + 'px';
+
+  // Sync sticky → table
+  sticky.addEventListener('scroll', () => {
+    wrap.scrollLeft = sticky.scrollLeft;
+  });
+
+  // Sync table → sticky
+  wrap.addEventListener('scroll', () => {
+    sticky.scrollLeft = wrap.scrollLeft;
+  });
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+// If token exists from session, skip login and go to class select or restore class
+(async function init() {
+  if (authToken && currentClass) {
+    document.getElementById('class-badge').textContent =
+      currentClass === 'EWSI' ? 'EWS I' : 'EWS III';
+    showScreen('app-screen');
+    showPanel('units');
+    await Promise.all([loadRoster(), loadWeeks()]);
+    loadUnits();
+  } else if (authToken) {
+    showScreen('class-select-screen');
+  }
+})();
+</script>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v0.7</div>
+</body>
+</html>

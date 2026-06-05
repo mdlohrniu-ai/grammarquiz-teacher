@@ -1166,9 +1166,13 @@ body {
     <!-- ── GRADES PANEL ──────────────────────────────────────────────────── -->
     <div id="panel-grades" style="display:none">
       <div class="panel-header">
-        <div>
-          <div class="panel-title">Grades</div>
-          <div class="panel-sub">Update grades input and export to Moodle</div>
+        <div style="display:flex;align-items:baseline;gap:1.5rem;flex-wrap:wrap">
+          <div>
+            <div class="panel-title">Grades</div>
+            <div class="panel-sub">Update grades input and export to Moodle</div>
+          </div>
+          <div style="font-family:'Fraunces',serif;font-size:2rem;font-weight:400;color:var(--accent)" id="grades-week-display">—</div>
+        </div>
           <div style="display:flex;gap:0.75rem;align-items:center;margin-top:0.5rem;flex-wrap:wrap;font-size:0.82rem;color:var(--ink-soft)">
             <span style="font-weight:600">Weights:</span>
             <label style="display:flex;align-items:center;gap:0.3rem">Practice Q
@@ -2342,6 +2346,8 @@ function toggleAllGradesHW(checked) {
 async function loadGradesData() {
   // Auto-detect current week from Quiz Data sheet
   const week = await getCurrentWeek();
+  const weekEl = document.getElementById('grades-week-display');
+  if (weekEl) weekEl.textContent = week ? 'Week ' + week : '—';
   if (!week) {
     document.getElementById('grades-content').innerHTML =
       '<div class="alert alert-warning">⚠️ Could not detect current week. Make sure Quiz Data has been generated.</div>';
@@ -2790,6 +2796,6 @@ async function saveQBInstruction(section, insRow, insTab) {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v2.0</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v2.1</div>
 </body>
 </html>

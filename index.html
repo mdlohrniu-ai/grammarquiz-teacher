@@ -1884,9 +1884,10 @@ function renderFlags() {
         </div>
         <div class="flag-controls">
           <span class="chip ${statusChip}" id="flag-status-chip-${f.row}">${f.status}</span>
-          <div style="display:flex;gap:0.4rem">
+          <div style="display:flex;gap:0.4rem;flex-wrap:wrap">
             <button class="btn btn-success btn-sm" onclick="setFlagStatus(${f.row},'Approved')">✓ Approve</button>
             <button class="btn btn-danger btn-sm" onclick="setFlagStatus(${f.row},'Rejected')">✗ Reject</button>
+            <button class="btn btn-ghost btn-sm" onclick="toggleQBEdit(${f.row})" id="qb-toggle-${f.row}">✏️ Edit QB</button>
           </div>
           <div style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--ink-muted)">
             <span>Score:</span>
@@ -1896,6 +1897,22 @@ function renderFlags() {
               onchange="markFlagDirty(${f.row})">
           </div>
         </div>
+      </div>
+      <div id="qb-edit-${f.row}" style="display:none;margin-top:0.6rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:0.9rem;display:flex;flex-direction:column;gap:0.6rem;">
+        <div style="font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--accent);margin-bottom:0.2rem">Edit Question Bank</div>
+        <div class="field" style="margin:0">
+          <label>Question text</label>
+          <textarea id="qb-q-${f.row}" rows="2" style="background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.7rem;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--ink);outline:none;resize:vertical;width:100%">${f.question}</textarea>
+        </div>
+        <div class="field" style="margin:0">
+          <label>Answer</label>
+          <input type="text" id="qb-a-${f.row}" value="${f.correctAnswer}"
+            style="background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.7rem;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--ink);outline:none;width:100%">
+        </div>
+        <div style="display:flex;gap:0.5rem;align-items:center">
+          <button class="btn btn-primary btn-sm" onclick="saveQBEdit(${f.row},'${f.unit}','${f.question.replace(/'/g,"\\'")}')">Save to QB</button>
+          <span id="qb-status-${f.row}" style="font-size:0.78rem;color:var(--ink-muted)"></span>
+        </div>
       </div>`;
     });
 
@@ -1903,6 +1920,57 @@ function renderFlags() {
   });
 
   content.innerHTML = html;
+}
+
+function toggleQBEdit(row) {
+  const el = document.getElementById('qb-edit-' + row);
+  const btn = document.getElementById('qb-toggle-' + row);
+  if (!el) return;
+  const isHidden = el.style.display === 'none' || el.style.display === '';
+  el.style.display = isHidden ? 'flex' : 'none';
+  el.style.flexDirection = 'column';
+  if (btn) btn.style.color = isHidden ? 'var(--accent)' : '';
+}
+
+async function saveQBEdit(row, unitName, originalQuestion) {
+  const statusEl = document.getElementById('qb-status-' + row);
+  const newQ = document.getElementById('qb-q-' + row)?.value.trim();
+  const newA = document.getElementById('qb-a-' + row)?.value.trim();
+  if (!newQ && !newA) { statusEl.textContent = 'Nothing to save'; return; }
+
+  statusEl.textContent = 'Searching QB…';
+  statusEl.style.color = 'var(--ink-muted)';
+
+  try {
+    // First find the row in QB mirror
+    const searchResult = await api({
+      action: 'searchQBQuestion',
+      questionText: originalQuestion,
+      unitName: unitName
+    });
+
+    if (!searchResult.found) {
+      statusEl.textContent = '⚠ Question not found in QB mirror';
+      statusEl.style.color = 'var(--gold)';
+      return;
+    }
+
+    statusEl.textContent = 'Saving…';
+
+    // Update the QB row
+    await api({
+      action: 'updateQBQuestion',
+      row: searchResult.row,
+      question: newQ,
+      answer: newA
+    });
+
+    statusEl.textContent = `✓ Saved to QB (row ${searchResult.row})`;
+    statusEl.style.color = 'var(--green)';
+  } catch(e) {
+    statusEl.textContent = '✗ Error: ' + e.message;
+    statusEl.style.color = 'var(--red)';
+  }
 }
 
 function setFlagStatus(row, status) {
@@ -2083,6 +2151,6 @@ function initStickyScrollbar() {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v0.8</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v0.9</div>
 </body>
 </html>

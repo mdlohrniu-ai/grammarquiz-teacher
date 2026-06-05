@@ -1383,6 +1383,11 @@ function showPanel(name) {
     const btn = document.getElementById('nav-' + p);
     if (btn) btn.classList.toggle('active', p === name);
   });
+  // Clear grades content when leaving grades to prevent stale warnings
+  if (name !== 'grades') {
+    const gc = document.getElementById('grades-content');
+    if (gc && !gradesData) gc.innerHTML = '';
+  }
   // Show/hide fixed scrollbar
   const fixedBar = document.getElementById('fixed-scroll-bar');
   if (fixedBar) fixedBar.style.display = name === 'units' ? 'block' : 'none';
@@ -2354,7 +2359,7 @@ async function loadGradesData() {
     if (!data.hasData) {
       const reason = data.reason || `No Grades Input found for Week ${week}.`;
       document.getElementById('grades-content').innerHTML =
-        `<div class="alert alert-warning" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+        `<div style="padding:0.8rem 1rem;border-radius:var(--radius);font-size:0.85rem;background:var(--gold-bg);color:var(--gold);border:1px solid rgba(200,160,70,0.3);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
           <span>⚠️ ${reason}</span>
           <button class="btn btn-primary btn-sm" onclick="doApplyFlagFixes()">⚙ Generate Now</button>
         </div>`;
@@ -2868,6 +2873,6 @@ async function downloadGradingPDF() {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v2.5</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v2.6</div>
 </body>
 </html>

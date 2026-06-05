@@ -1188,9 +1188,9 @@ body {
         <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="toggleAllGradesHW(true)">✓ Check all HW</button>
           <button class="btn btn-ghost btn-sm" onclick="toggleAllGradesHW(false)">✗ Uncheck all HW</button>
-          <button class="btn btn-ghost btn-sm" onclick="doUpdateGradesInput()" id="update-grades-btn">⚙ Refresh Grades</button>
-          <button class="btn btn-ghost btn-sm" onclick="saveGradesHW()">💾 Save HW</button>
-          <button class="btn btn-primary" onclick="doExportGrades()" id="export-grades-btn">📤 Export Grades</button>
+          <button class="btn btn-ghost btn-sm" onclick="doApplyFlagFixes()" id="apply-flags-btn">⚡ Apply Flag Fixes</button>
+          <button class="btn btn-primary" onclick="doSaveAllGrades()" id="save-grades-btn" style="font-size:0.95rem;padding:0.7rem 1.6rem">💾 Save Changes</button>
+          <button class="btn btn-ghost btn-sm" onclick="doExportGrades()" id="export-grades-btn">📤 Export Grades</button>
         </div>
       </div>
       <div id="grades-content">
@@ -1698,6 +1698,10 @@ async function loadPreview() {
     return;
   }
 
+  // Clear flag queue when switching students
+  teacherFlagQueue = {};
+  updatePreviewFlagBtn();
+
   setLoading(true);
   try {
     const data = await api({ action: 'getQuizData', student: num });
@@ -1728,33 +1732,78 @@ function setPreviewMode(mode) {
   if (previewQuestions) renderPreview();
 }
 
-async function teacherToggleFlag(qKey, week, studentNum, studentName, resRow) {
+// Teacher flag queue for preview panel: key = qKey, value = {flagData, shouldFlag}
+let teacherFlagQueue = {};
+
+function teacherToggleFlag(qKey, week, studentNum, studentName, resRow) {
   const btn = document.getElementById('preview-flag-' + qKey);
-  const isFlagged = resRow.flagged;
+  const currentlyFlagged = teacherFlagQueue[qKey]
+    ? teacherFlagQueue[qKey].shouldFlag
+    : resRow.flagged;
+
+  const nowFlagged = !currentlyFlagged;
+  teacherFlagQueue[qKey] = {
+    shouldFlag: nowFlagged,
+    week, studentNum, studentName,
+    qNum: resRow.qNum || '',
+    unit: resRow.unit || '',
+    question: resRow.question || '',
+    studentAnswer: resRow.studentAnswer || '',
+    correctAnswer: resRow.correctAnswer || '',
+    score: resRow.score || 0
+  };
+
+  if (btn) {
+    btn.textContent = nowFlagged ? '🚩 Flagged' : '🚩 Flag';
+    btn.style.background = nowFlagged ? 'rgba(192,85,85,0.15)' : 'none';
+    btn.style.border = `1px solid ${nowFlagged ? 'var(--red)' : '#ccc'}`;
+    btn.style.color = nowFlagged ? 'var(--red)' : '#999';
+  }
+
+  // Show/update submit button
+  updatePreviewFlagBtn();
+}
+
+function updatePreviewFlagBtn() {
+  const pending = Object.values(teacherFlagQueue).filter(f => f.shouldFlag !== undefined);
+  let btn = document.getElementById('preview-submit-flags-btn');
+  if (!btn && pending.length > 0) {
+    btn = document.createElement('button');
+    btn.id = 'preview-submit-flags-btn';
+    btn.className = 'btn btn-danger';
+    btn.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);z-index:50;box-shadow:0 4px 20px rgba(0,0,0,0.4)';
+    btn.onclick = submitTeacherFlags;
+    document.body.appendChild(btn);
+  }
+  if (btn) {
+    const count = Object.values(teacherFlagQueue).filter(f => f.shouldFlag).length;
+    btn.textContent = `🚩 Submit ${count} Flag${count !== 1 ? 's' : ''} for This Student`;
+    btn.style.display = pending.length > 0 ? 'block' : 'none';
+  }
+}
+
+async function submitTeacherFlags() {
+  const entries = Object.values(teacherFlagQueue);
+  if (entries.length === 0) return;
+  setLoading(true);
   try {
-    await api({
-      action: 'flagForStudent',
-      week, studentNum, studentName,
-      qNum: resRow.qNum || '',
-      unit: resRow.unit || '',
-      question: resRow.question || '',
-      studentAnswer: resRow.studentAnswer || '',
-      correctAnswer: resRow.correctAnswer || '',
-      score: resRow.score || 0,
-      reason: 'Flagged by teacher',
-      unflag: isFlagged
-    });
-    // Toggle state
-    resRow.flagged = !isFlagged;
-    if (btn) {
-      btn.textContent = resRow.flagged ? '🚩 Flagged' : '🚩 Flag';
-      btn.style.background = resRow.flagged ? 'var(--red-bg)' : 'none';
-      btn.style.border = `1px solid ${resRow.flagged ? 'var(--red)' : '#ccc'}`;
-      btn.style.color = resRow.flagged ? 'var(--red)' : '#999';
+    for (const f of entries) {
+      await api({
+        action: 'flagForStudent',
+        week: f.week, studentNum: f.studentNum, studentName: f.studentName,
+        qNum: f.qNum, unit: f.unit, question: f.question,
+        studentAnswer: f.studentAnswer, correctAnswer: f.correctAnswer,
+        score: f.score, reason: 'Flagged by teacher',
+        unflag: !f.shouldFlag
+      });
     }
-    toast(resRow.flagged ? 'Question flagged' : 'Flag removed', 'success');
+    toast(`${entries.filter(f=>f.shouldFlag).length} flag(s) submitted`, 'success');
+    teacherFlagQueue = {};
+    updatePreviewFlagBtn();
   } catch(e) {
     toast('Error: ' + e.message, 'error');
+  } finally {
+    setLoading(false);
   }
 }
 
@@ -2349,14 +2398,16 @@ function renderGradesTable(data) {
       <td style="font-weight:500">${r.eng}</td>
       <td style="text-align:center">
         <input type="checkbox" ${r.practiceQ ? 'checked' : ''} id="gw-pq-${r.num}"
+          onchange="recalcTotal('${r.num}')"
           style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer">
       </td>
       <td style="text-align:center">
         <input type="checkbox" ${r.flashcard ? 'checked' : ''} id="gw-fc-${r.num}"
+          onchange="recalcTotal('${r.num}')"
           style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer">
       </td>
       <td style="text-align:center">
-        <select id="gw-new-${r.num}" onchange="updateGradeOverrideColor(this)"
+        <select id="gw-new-${r.num}" onchange="updateGradeOverrideColor(this);recalcTotal('${r.num}')"
           style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:0.25rem 0.4rem;font-size:0.82rem;font-weight:600;color:${newColor};text-align:center;outline:none;cursor:pointer">
           <option value="PASS" ${r.quizNew==='PASS'?'selected':''} style="color:var(--green)">PASS</option>
           <option value="FAIL" ${r.quizNew==='FAIL'?'selected':''} style="color:var(--red)">FAIL</option>
@@ -2364,7 +2415,7 @@ function renderGradesTable(data) {
         </select>
       </td>
       <td style="text-align:center">
-        <select id="gw-rev-${r.num}" onchange="updateGradeOverrideColor(this)"
+        <select id="gw-rev-${r.num}" onchange="updateGradeOverrideColor(this);recalcTotal('${r.num}')"
           style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:0.25rem 0.4rem;font-size:0.82rem;font-weight:600;color:${revColor};text-align:center;outline:none;cursor:pointer">
           <option value="PASS" ${r.quizRev==='PASS'?'selected':''} style="color:var(--green)">PASS</option>
           <option value="FAIL" ${r.quizRev==='FAIL'?'selected':''} style="color:var(--red)">FAIL</option>
@@ -2373,7 +2424,7 @@ function renderGradesTable(data) {
       </td>
       <td style="text-align:center;font-size:0.78rem;color:var(--gold)">${r.flagged || ''}</td>
       <td style="text-align:center;font-size:0.78rem;color:var(--gold)">${r.bonus || ''}</td>
-      <td style="text-align:center;font-weight:700;color:${totalColor}">${r.total !== undefined ? r.total : '—'}</td>
+      <td style="text-align:center;font-weight:700;color:${totalColor}" id="gw-total-${r.num}">${r.total !== undefined ? r.total : '—'}</td>
     </tr>`;
   });
 
@@ -2437,6 +2488,70 @@ function updateGradeOverrideColor(sel) {
   sel.style.color = val === 'PASS' ? 'var(--green)' : val === 'FAIL' ? 'var(--red)' : 'var(--ink-muted)';
 }
 
+function recalcTotal(num) {
+  const pq  = document.getElementById('gw-pq-' + num)?.checked;
+  const fc  = document.getElementById('gw-fc-' + num)?.checked;
+  const nw  = document.getElementById('gw-new-' + num)?.value;
+  const rv  = document.getElementById('gw-rev-' + num)?.value;
+  const wPQ = parseInt(document.getElementById('w-practiceq')?.value) || 30;
+  const wFC = parseInt(document.getElementById('w-flashcard')?.value)  || 30;
+  const wNW = parseInt(document.getElementById('w-quiznew')?.value)    || 20;
+  const wRV = parseInt(document.getElementById('w-quizrev')?.value)    || 20;
+  const total = (pq ? wPQ : 0) + (fc ? wFC : 0) + (nw === 'PASS' ? wNW : 0) + (rv === 'PASS' ? wRV : 0);
+  const el = document.getElementById('gw-total-' + num);
+  if (el) {
+    el.textContent = total;
+    el.style.color = total >= 60 ? 'var(--green)' : total > 0 ? 'var(--gold)' : 'var(--red)';
+  }
+}
+
+async function doApplyFlagFixes() {
+  const week = await getCurrentWeek();
+  if (!week) { toast('Could not detect current week', 'error'); return; }
+  if (!confirm('Apply approved flag corrections to Week ' + week + ' scores and regenerate Grades Input?')) return;
+  setLoading(true);
+  try {
+    const weights = {
+      practiceQ: parseInt(document.getElementById('w-practiceq')?.value) || 30,
+      flashcard:  parseInt(document.getElementById('w-flashcard')?.value)  || 30,
+      quizNew:    parseInt(document.getElementById('w-quiznew')?.value)    || 20,
+      quizRev:    parseInt(document.getElementById('w-quizrev')?.value)    || 20
+    };
+    const result = await api({ action: 'updateGradesInput', week, weights: JSON.stringify(weights) });
+    toast(`Flag fixes applied${result.corrections > 0 ? ' · ' + result.corrections + ' correction(s)' : ' · No new corrections'}`, 'success');
+    await loadGradesData();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function doSaveAllGrades() {
+  if (!gradesData) { toast('No grades data loaded', 'error'); return; }
+  const week = await getCurrentWeek();
+  if (!week) { toast('Could not detect current week', 'error'); return; }
+  const btn = document.getElementById('save-grades-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  setLoading(true);
+  try {
+    const updates = gradesData.rows.map(r => ({
+      studentNum: r.num,
+      practiceQ: document.getElementById('gw-pq-' + r.num)?.checked ?? r.practiceQ,
+      flashcard:  document.getElementById('gw-fc-' + r.num)?.checked ?? r.flashcard,
+      quizNew:   document.getElementById('gw-new-' + r.num)?.value ?? r.quizNew,
+      quizRev:   document.getElementById('gw-rev-' + r.num)?.value ?? r.quizRev
+    }));
+    await api({ action: 'saveHomework', week, updates: JSON.stringify(updates) });
+    toast('All changes saved to Google Sheet ✓', 'success');
+  } catch(e) {
+    toast('Save failed: ' + e.message, 'error');
+  } finally {
+    setLoading(false);
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Save Changes'; }
+  }
+}
+
 async function saveGradesHW(silent = false) {
   if (!gradesData) return;
   const week = await getCurrentWeek();
@@ -2448,7 +2563,7 @@ async function saveGradesHW(silent = false) {
     quizRev:   document.getElementById('gw-rev-' + r.num)?.value ?? r.quizRev
   }));
   try {
-    await api({ action: 'saveHomework', week, updates });
+    await api({ action: 'saveHomework', week, updates: JSON.stringify(updates) });
     if (!silent) toast('Homework saved!', 'success');
   } catch(e) {
     if (!silent) toast('Save failed: ' + e.message, 'error');
@@ -2675,6 +2790,6 @@ async function saveQBInstruction(section, insRow, insTab) {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v1.9</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v2.0</div>
 </body>
 </html>

@@ -1225,19 +1225,15 @@ function toast(msg, type = '') {
 
 // ── API CALL ──────────────────────────────────────────────────────────────────
 async function api(params, method = 'GET', body = null) {
-  params.token = authToken;
-  params.class = currentClass;
-
-  let url = API + '?' + new URLSearchParams(params).toString();
-
-  const opts = { method };
-  if (method === 'POST' && body) {
-    opts.headers = { 'Content-Type': 'application/json' };
-    opts.body = JSON.stringify({ ...body, token: authToken, class: currentClass });
-    url = API;
+  // All calls use GET — Apps Script handles CORS cleanly for GET requests
+  const allParams = { ...params, token: authToken, class: currentClass };
+  if (body) {
+    // Encode complex body as a JSON string in the 'data' param
+    allParams.data = JSON.stringify(body);
+    if (body.action) allParams.action = body.action;
   }
-
-  const res = await fetch(url, opts);
+  const url = API + '?' + new URLSearchParams(allParams).toString();
+  const res = await fetch(url);
   const data = await res.json();
   if (!data.ok) throw new Error(data.error || 'API error');
   return data;
@@ -1257,11 +1253,8 @@ async function doLogin() {
   btn.textContent = 'Signing in…';
 
   try {
-    const res = await fetch(API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'login', username, password })
-    });
+    const params = new URLSearchParams({ action: 'loginGet', username, password });
+    const res = await fetch(API + '?' + params.toString());
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || 'Login failed');
 
@@ -2040,5 +2033,6 @@ async function saveHomework() {
   }
 })();
 </script>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v0.1</div>
 </body>
 </html>

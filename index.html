@@ -1198,6 +1198,9 @@ body {
           <select id="grades-week-select" class="field" style="width:120px;margin:0" onchange="loadGradesData()">
             <option value="">Week…</option>
           </select>
+          <input type="number" id="grades-week-manual" min="1" max="30" placeholder="or type week #"
+            style="width:110px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.6rem;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--ink);outline:none;"
+            oninput="document.getElementById('grades-week-select').value=''; gradesWeekOverride=this.value;">
           <button class="btn btn-ghost btn-sm" onclick="doUpdateGradesInput()" id="update-grades-btn">⚙ Update Grades Input</button>
           <button class="btn btn-primary" onclick="doExportGrades()" id="export-grades-btn">📤 Export Grades</button>
         </div>
@@ -1226,7 +1229,8 @@ body {
           <input type="number" id="qb-unit-input" min="1" max="200" placeholder="Unit #"
             style="width:80px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.6rem;font-family:'DM Sans',sans-serif;font-size:0.9rem;color:var(--ink);outline:none;"
             onkeydown="if(event.key==='Enter')loadQBUnit()">
-          <button class="btn btn-primary" onclick="loadQBUnit()">Load Unit</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadQBUnit()">Load Unit</button>
+          <button class="btn btn-primary" onclick="batchSaveQBEdits()" id="qb-save-all-btn">Save All Changes</button>
         </div>
       </div>
       <div id="qb-content">
@@ -1963,15 +1967,19 @@ function renderFlags() {
         <div style="font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--accent);margin-bottom:0.2rem">Edit Question Bank</div>
         <div class="field" style="margin:0">
           <label>Question text</label>
-          <textarea id="qb-q-${f.row}" rows="2" style="background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.7rem;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--ink);outline:none;resize:vertical;width:100%">${f.question}</textarea>
+          <textarea id="qb-q-${f.row}" rows="2"
+            oninput="queueFlagQBEdit(${f.row},'${f.unit}','${f.question.replace(/'/g,String.fromCharCode(92,39)).replace(/\n/g,' ')}')"
+            style="background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.7rem;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--ink);outline:none;resize:vertical;width:100%">${f.question}</textarea>
         </div>
         <div class="field" style="margin:0">
           <label>Answer</label>
           <input type="text" id="qb-a-${f.row}" value="${f.correctAnswer}"
+            oninput="queueFlagQBEdit(${f.row},'${f.unit}','${f.question.replace(/'/g,"\'").replace(/
+/g,' ')}')"
             style="background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.7rem;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--ink);outline:none;width:100%">
         </div>
         <div style="display:flex;gap:0.5rem;align-items:center">
-          <button class="btn btn-primary btn-sm" onclick="saveQBEdit(${f.row},'${f.unit}','${f.question.replace(/'/g,"\\'")}')">Save to QB</button>
+          
           <span id="qb-status-${f.row}" style="font-size:0.78rem;color:var(--ink-muted)"></span>
         </div>
       </div>`;
@@ -1993,18 +2001,14 @@ function toggleQBEdit(row) {
   if (btn) btn.style.color = isHidden ? 'var(--accent)' : '';
 }
 
-function saveQBEdit(row, unitName, originalQuestion) {
+function queueFlagQBEdit(row, unitName, originalQuestion) {
   const statusEl = document.getElementById('qb-status-' + row);
   const newQ = document.getElementById('qb-q-' + row)?.value.trim();
   const newA = document.getElementById('qb-a-' + row)?.value.trim();
-  if (!newQ && !newA) { statusEl.textContent = 'Nothing to change'; return; }
 
   // Queue the edit locally — will be sent when "Save All Changes" is clicked
   qbEditQueue[row] = { row, unitName, originalQuestion, question: newQ, answer: newA };
-  statusEl.textContent = '● Queued';
-  statusEl.style.color = 'var(--gold)';
-
-  // Update the batch save button to show pending count
+  if (statusEl) { statusEl.textContent = '● Queued'; statusEl.style.color = 'var(--gold)'; }
   updateQBQueueCount();
 }
 
@@ -2232,9 +2236,15 @@ function initStickyScrollbar() {
 // ── ═══════════════════════════════════════════════════════════════════════════
 
 let gradesData = null;
+let gradesWeekOverride = '';
+
+function getGradesWeek() {
+  return document.getElementById('grades-week-select').value ||
+         document.getElementById('grades-week-manual')?.value || '';
+}
 
 async function loadGradesData() {
-  const week = document.getElementById('grades-week-select').value;
+  const week = getGradesWeek();
   if (!week) return;
   setLoading(true);
   try {
@@ -2309,8 +2319,8 @@ function renderGradesTable(data) {
 }
 
 async function doUpdateGradesInput() {
-  const week = document.getElementById('grades-week-select').value;
-  if (!week) { toast('Select a week first', 'error'); return; }
+  const week = getGradesWeek();
+  if (!week) { toast('Select a week number first', 'error'); return; }
   if (!confirm(`Update Grades Input for Week ${week}? This will apply any approved flag corrections.`)) return;
   setLoading(true);
   try {
@@ -2325,8 +2335,8 @@ async function doUpdateGradesInput() {
 }
 
 async function doExportGrades() {
-  const week = document.getElementById('grades-week-select').value;
-  if (!week) { toast('Select a week first', 'error'); return; }
+  const week = getGradesWeek();
+  if (!week) { toast('Select a week number first', 'error'); return; }
   setLoading(true);
   try {
     // First save any homework changes
@@ -2347,7 +2357,7 @@ async function doExportGrades() {
 
 async function saveGradesHW(silent = false) {
   if (!gradesData) return;
-  const week = document.getElementById('grades-week-select').value;
+  const week = getGradesWeek();
   const updates = gradesData.rows.map(r => ({
     studentNum: r.num,
     practiceQ: document.getElementById('gw-pq-' + r.num)?.checked ?? r.practiceQ,
@@ -2428,16 +2438,19 @@ function renderQBEditor(data) {
               <div style="display:flex;gap:0.5rem;align-items:center">
                 <span style="font-size:0.7rem;font-weight:600;text-transform:uppercase;color:var(--ink-muted);width:60px;flex-shrink:0">Question</span>
                 <input type="text" id="qb-q-edit-${q.row}" value="${(q.question || '').replace(/"/g,'&quot;')}"
+                  oninput="queueQBRowEdit(${q.row},'${q.tab}','Unit ${data.unit}','${(q.question||'').replace(/'/g,"\'").replace(/
+/g,' ')}')"
                   style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:0.35rem 0.6rem;font-family:'DM Sans',sans-serif;font-size:0.83rem;color:var(--ink);outline:none">
               </div>
               <div style="display:flex;gap:0.5rem;align-items:center">
                 <span style="font-size:0.7rem;font-weight:600;text-transform:uppercase;color:var(--ink-muted);width:60px;flex-shrink:0">Answer</span>
                 <input type="text" id="qb-a-edit-${q.row}" value="${(q.answer || '').replace(/"/g,'&quot;')}"
+                  oninput="queueQBRowEdit(${q.row},'${q.tab}','Unit ${data.unit}','${(q.question||'').replace(/'/g,"\'").replace(/
+/g,' ')}')"
                   style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:0.35rem 0.6rem;font-family:'DM Mono',monospace;font-size:0.83rem;color:var(--accent);outline:none">
               </div>
               <div style="display:flex;gap:0.5rem;align-items:center;justify-content:flex-end">
                 <span id="qb-save-status-${q.row}" style="font-size:0.75rem;color:var(--ink-muted)"></span>
-                <button class="btn btn-ghost btn-sm" onclick="saveQBRow(${q.row},'${q.tab}')">Save to QB</button>
               </div>
             </div>
           </div>
@@ -2449,6 +2462,70 @@ function renderQBEditor(data) {
   });
 
   content.innerHTML = html;
+}
+
+async function batchSaveQBEdits() {
+  const edits = Object.values(qbEditQueue);
+  if (edits.length === 0) { toast('No changes to save', ''); return; }
+
+  setLoading(true);
+  let saved = 0, failed = 0;
+  for (const edit of edits) {
+    try {
+      let qbRow = edit.row, qbTab = edit.tab;
+
+      if (edit.isDirectRow) {
+        // QB Editor: row and tab already known
+        await api({
+          action: 'updateQBQuestion',
+          row: qbRow,
+          tab: qbTab,
+          question: edit.question,
+          answer: edit.answer
+        });
+      } else {
+        // Flags panel: need to search for the row first
+        const searchResult = await api({
+          action: 'searchQBQuestion',
+          questionText: edit.originalQuestion,
+          unitName: edit.unitName
+        });
+        if (!searchResult.found) { failed++; continue; }
+        await api({
+          action: 'updateQBQuestion',
+          row: searchResult.row,
+          tab: searchResult.tab,
+          question: edit.question,
+          answer: edit.answer
+        });
+      }
+      const statusEl = document.getElementById('qb-status-' + edit.row) ||
+                       document.getElementById('qb-save-status-' + edit.row);
+      if (statusEl) { statusEl.textContent = '✓ Saved'; statusEl.style.color = 'var(--green)'; }
+      delete qbEditQueue[edit.row];
+      saved++;
+    } catch(e) { failed++; }
+  }
+  updateQBQueueCount();
+  setLoading(false);
+  toast(`Saved ${saved} QB edit(s)${failed > 0 ? ` · ${failed} failed` : ''}`, saved > 0 ? 'success' : 'error');
+}
+
+// Also hook QB Editor row inputs into the same queue
+function queueQBRowEdit(row, tab, unitName, originalQuestion) {
+  const newQ = document.getElementById('qb-q-edit-' + row)?.value.trim();
+  const newA = document.getElementById('qb-a-edit-' + row)?.value.trim();
+  qbEditQueue[row] = { row, tab, unitName, originalQuestion, question: newQ, answer: newA, isDirectRow: true };
+  const statusEl = document.getElementById('qb-save-status-' + row);
+  if (statusEl) { statusEl.textContent = '● Queued'; statusEl.style.color = 'var(--gold)'; }
+  // Update QB save all button
+  const btn = document.getElementById('qb-save-all-btn');
+  const count = Object.keys(qbEditQueue).length;
+  if (btn) {
+    btn.textContent = count > 0 ? `Save All Changes (${count})` : 'Save All Changes';
+    btn.style.background = count > 0 ? 'var(--gold)' : '';
+    btn.style.color = count > 0 ? '#1a1510' : '';
+  }
 }
 
 async function saveQBRow(row, tab) {
@@ -2494,6 +2571,6 @@ async function saveQBInstruction(section, insRow, insTab) {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v1.2</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v1.3</div>
 </body>
 </html>

@@ -929,6 +929,26 @@ body {
   display: none;
 }
 
+/* ── STICKY TABLE SCROLL ────────────────────────────────────────────────────── */
+.mgmt-table-wrap {
+  position: relative;
+}
+
+.sticky-scrollbar-wrap {
+  position: sticky;
+  bottom: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 12px;
+  background: var(--surface2);
+  border-top: 1px solid var(--border-soft);
+  z-index: 10;
+}
+
+.sticky-scrollbar-inner {
+  height: 1px;
+}
+
 /* ── SCROLLBAR ──────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
@@ -1362,6 +1382,7 @@ async function loadUnits() {
     const data = await api({ action: 'getManagement' });
     mgmtData = data;
     renderUnitsTable(data);
+    setTimeout(initStickyScrollbar, 100);
     isDirty = false;
     document.getElementById('save-units-btn').textContent = 'Save Changes';
   } catch(e) {
@@ -2034,6 +2055,27 @@ async function saveHomework() {
   }
 }
 
+// ── STICKY SCROLLBAR SYNC ────────────────────────────────────────────────────
+function initStickyScrollbar() {
+  const wrap = document.querySelector('.mgmt-table-wrap');
+  const sticky = document.getElementById('sticky-scroll');
+  const inner = document.getElementById('sticky-scroll-inner');
+  if (!wrap || !sticky || !inner) return;
+
+  // Match inner width to table scroll width
+  inner.style.width = wrap.scrollWidth + 'px';
+
+  // Sync sticky → table
+  sticky.addEventListener('scroll', () => {
+    wrap.scrollLeft = sticky.scrollLeft;
+  });
+
+  // Sync table → sticky
+  wrap.addEventListener('scroll', () => {
+    sticky.scrollLeft = wrap.scrollLeft;
+  });
+}
+
 // ── INIT ──────────────────────────────────────────────────────────────────────
 // If token exists from session, skip login and go to class select or restore class
 (async function init() {
@@ -2049,6 +2091,6 @@ async function saveHomework() {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v0.6</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v0.7</div>
 </body>
 </html>

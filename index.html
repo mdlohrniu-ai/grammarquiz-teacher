@@ -1044,7 +1044,7 @@ body {
             <input type="number" id="week-num-input" min="1" max="30" style="width:60px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:0.4rem 0.5rem;font-family:'DM Mono',monospace;font-size:0.9rem;color:var(--accent);text-align:center;outline:none;" onchange="markDirty()">
           </div>
           <button class="btn btn-ghost btn-sm" onclick="loadUnits()">↺ Refresh</button>
-          <button class="btn btn-primary" onclick="saveUnits()" id="save-units-btn">Save Changes</button>
+          <button class="btn btn-primary" onclick="generateQuizzes()" id="save-units-btn">⚡ Generate Quizzes</button>
         </div>
       </div>
 
@@ -1501,31 +1501,26 @@ function renderUnitsTable(data) {
 
 
 
-function checkDuplicateUnits(data) {
+function getDuplicateWarnings(data) {
   const currentWeekIdx = data.weekNum ? Number(data.weekNum) - 1 : -1;
-  if (currentWeekIdx < 0) return;
+  if (currentWeekIdx < 0) return [];
 
   const warnings = [];
 
-  // If ANY student already has 3+ parts in the current week, the quiz has been
-  // generated — skip the duplicate check entirely for this load.
+  // If ANY student already has 3+ parts in the current week, quiz already generated
   const quizAlreadyGenerated = (data.students || []).some(s => {
     const entry = (s.units[currentWeekIdx] || '').trim();
     return entry.split(';').filter(u => u.trim()).length >= 3;
   });
-  if (quizAlreadyGenerated) return;
+  if (quizAlreadyGenerated) return [];
 
   (data.students || []).forEach(s => {
     const currentEntry = (s.units[currentWeekIdx] || '').trim();
     if (!currentEntry || currentEntry === '0') return;
 
-    // Units the teacher entered this week (1 or 2 parts only at this point)
     const unitsToCheck = currentEntry.split(';').map(u => u.trim()).filter(u => u && u !== '0');
     if (unitsToCheck.length === 0) return;
 
-    // Previous weeks: collect ALL unit numbers that appeared
-    // (safe now because we know quiz hasn't been generated yet,
-    //  so previous weeks' entries are also teacher-entered values)
     const prevAllUnits = new Set();
     s.units.forEach((entry, idx) => {
       if (idx >= currentWeekIdx) return;
@@ -1533,7 +1528,6 @@ function checkDuplicateUnits(data) {
       entry.split(';').forEach(u => { const t = u.trim(); if (t) prevAllUnits.add(t); });
     });
 
-    // Flag any current unit that appeared in any previous week
     const dupes = unitsToCheck.filter(u => prevAllUnits.has(u));
     if (dupes.length > 0) {
       warnings.push({
@@ -1544,33 +1538,10 @@ function checkDuplicateUnits(data) {
     }
   });
 
-  // Clear any existing warning
-  const existing = document.getElementById('duplicate-unit-warning');
-  if (existing) existing.remove();
 
-  if (warnings.length === 0) return;
-
-  // Show warning banner
-  const banner = document.createElement('div');
-  banner.id = 'duplicate-unit-warning';
-  banner.style.cssText = 'background:var(--red-bg);border:1px solid rgba(192,85,85,0.4);border-radius:var(--radius);padding:0.9rem 1.1rem;margin-bottom:1rem;font-size:0.85rem;color:var(--red)';
-  
-  const rows = warnings.map(w =>
-    `<div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.3rem">
-      <span style="font-weight:600">${w.name}</span>
-      <span style="color:var(--ink-soft)">—</span>
-      <span>Unit${w.units.length > 1 ? 's' : ''} <strong>${w.units.join(', ')}</strong> already studied in a previous week</span>
-    </div>`
-  ).join('');
-
-  banner.innerHTML = `<div style="font-weight:600;margin-bottom:0.4rem">⚠️ Duplicate unit${warnings.length > 1 ? 's' : ''} detected — please check before saving:</div>${rows}`;
-
-  // Insert before the table
-  const tableWrap = document.querySelector('.mgmt-table-wrap');
-  if (tableWrap) tableWrap.parentNode.insertBefore(banner, tableWrap);
+  return warnings;
 }
 
-// Also run check when any unit input changes
 function markDirty() {
   isDirty = true;
   document.getElementById('save-units-btn').textContent = 'Save Changes *';
@@ -1587,42 +1558,103 @@ function markDirty() {
   }
 }
 
-async function saveUnits() {
+function checkDuplicateUnits(data) {
+  const warnings = getDuplicateWarnings(data);
+  const existing = document.getElementById('duplicate-unit-warning');
+  if (existing) existing.remove();
+  if (warnings.length === 0) return;
+  const banner = document.createElement('div');
+  banner.id = 'duplicate-unit-warning';
+  banner.style.cssText = 'background:var(--red-bg);border:1px solid rgba(192,85,85,0.4);border-radius:var(--radius);padding:0.9rem 1.1rem;margin-bottom:1rem;font-size:0.85rem;color:var(--red)';
+  const rows = warnings.map(w =>
+    `<div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.3rem">
+      <span style="font-weight:600">${w.name}</span><span style="color:var(--ink-soft)">—</span>
+      <span>Unit${w.units.length>1?'s':''} <strong>${w.units.join(', ')}</strong> already studied in a previous week</span>
+    </div>`).join('');
+  banner.innerHTML = `<div style="font-weight:600;margin-bottom:0.4rem">⚠️ Duplicate unit${warnings.length>1?'s':''} detected — please fix before generating:</div>${rows}`;
+  const tableWrap = document.querySelector('.mgmt-table-wrap');
+  if (tableWrap) tableWrap.parentNode.insertBefore(banner, tableWrap);
+}
+
+async function generateQuizzes() {
   const weekNum = document.getElementById('week-num-input').value;
+  if (!weekNum) { toast('Enter a week number first', 'error'); return; }
 
-  // Collect updated unit values from inputs
-  const students = [];
-  const rows = {};
-
+  // Collect updated unit values from inputs into mgmtData first
   document.querySelectorAll('.mgmt-input').forEach(input => {
     const row = parseInt(input.dataset.row);
     const idx = parseInt(input.dataset.unitidx);
-    if (!rows[row]) rows[row] = { row, units: [] };
-    rows[row].units[idx] = input.value.trim();
+    const s = mgmtData.students.find(s => s.row === row);
+    if (s) s.units[idx] = input.value.trim();
   });
+  mgmtData.weekNum = weekNum;
 
-  // Merge level data from mgmtData
-  mgmtData.students.forEach(s => {
-    const entry = rows[s.row] || { row: s.row, units: s.units };
-    students.push({
-      row:   s.row,
-      basic: s.basic,
-      inter: s.inter,
-      adv:   s.adv,
-      units: entry.units
-    });
-  });
+  // Run duplicate check before anything else
+  const warnings = getDuplicateWarnings(mgmtData);
+  if (warnings.length > 0) {
+    // Show warning and block save
+    const existing = document.getElementById('duplicate-unit-warning');
+    if (existing) existing.remove();
+    const banner = document.createElement('div');
+    banner.id = 'duplicate-unit-warning';
+    banner.style.cssText = 'background:var(--red-bg);border:1px solid rgba(192,85,85,0.4);border-radius:var(--radius);padding:0.9rem 1.1rem;margin-bottom:1rem;font-size:0.85rem;color:var(--red)';
+    const rows = warnings.map(w =>
+      `<div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.3rem">
+        <span style="font-weight:600">${w.name}</span>
+        <span style="color:var(--ink-soft)">—</span>
+        <span>Unit${w.units.length > 1 ? 's' : ''} <strong>${w.units.join(', ')}</strong> already studied in a previous week</span>
+      </div>`
+    ).join('');
+    banner.innerHTML = `<div style="font-weight:600;margin-bottom:0.4rem">⚠️ Duplicate unit${warnings.length > 1 ? 's' : ''} detected — please fix before generating:</div>${rows}`;
+    const tableWrap = document.querySelector('.mgmt-table-wrap');
+    if (tableWrap) tableWrap.parentNode.insertBefore(banner, tableWrap);
+    toast('Duplicate units found — please fix before generating', 'error');
+    return;
+  }
 
+  if (!confirm(`Save units and generate quizzes for Week ${weekNum}? This will overwrite existing quiz data.`)) return;
+
+  const btn = document.getElementById('save-units-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
   setLoading(true);
+
   try {
+    // Step 1: Save management data
+    const students = mgmtData.students.map(s => ({
+      row: s.row, basic: s.basic, inter: s.inter, adv: s.adv, units: s.units
+    }));
     await api({}, 'POST', { action: 'saveManagement', weekNum, students });
+
+    // Step 2: Trigger quiz generator
+    const result = await api({ action: 'generateQuizzes', week: weekNum });
     isDirty = false;
-    document.getElementById('save-units-btn').textContent = 'Save Changes';
-    toast('Units saved successfully', 'success');
+
+    // Clear any duplicate warning
+    const existing = document.getElementById('duplicate-unit-warning');
+    if (existing) existing.remove();
+
+    if (result.needsGenerate) {
+      // Standalone script can't call bound generateQuizzes directly
+      // Show a prompt to open the sheet and run from the menu
+      toast(`Units saved ✓ — now open the sheet to generate quizzes`, 'success');
+      setTimeout(() => {
+        if (confirm(`Units saved for Week ${weekNum}.\n\nNow open the Google Sheet and run:\nQuiz Manager → Generate Quizzes\n\nOpen the sheet now?`)) {
+          window.open(result.sheetUrl, '_blank');
+        }
+      }, 500);
+    } else {
+      toast(`✓ Quizzes generated for Week ${weekNum}!`, 'success');
+    }
+
+    // Reload to show updated data
+    await loadUnits();
   } catch(e) {
-    toast('Save failed: ' + e.message, 'error');
+    toast('Error: ' + e.message, 'error');
   } finally {
     setLoading(false);
+    btn.disabled = false;
+    btn.textContent = '⚡ Generate Quizzes';
   }
 }
 
@@ -2960,6 +2992,6 @@ async function downloadGradingPDF() {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v3.2</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v3.4</div>
 </body>
 </html>

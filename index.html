@@ -1963,19 +1963,20 @@ function renderFlags() {
           </div>
         </div>
       </div>
-      <div id="qb-edit-${f.row}" style="display:none;margin-top:0.6rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:0.9rem;display:flex;flex-direction:column;gap:0.6rem;">
+      <div id="qb-edit-${f.row}" data-orig-question="${f.question.replace(/"/g,'&quot;')}" style="display:none;margin-top:0.6rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:0.9rem;display:flex;flex-direction:column;gap:0.6rem;">
         <div style="font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--accent);margin-bottom:0.2rem">Edit Question Bank</div>
         <div class="field" style="margin:0">
           <label>Question text</label>
           <textarea id="qb-q-${f.row}" rows="2"
-            oninput="queueFlagQBEdit(${f.row},'${f.unit}','${f.question.replace(/'/g,String.fromCharCode(92,39)).replace(/\n/g,' ')}')"
+            data-flagrow="${f.row}" data-unit="${f.unit}"
+            oninput="queueFlagQBEditFromEl(this)"
             style="background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.7rem;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--ink);outline:none;resize:vertical;width:100%">${f.question}</textarea>
         </div>
         <div class="field" style="margin:0">
           <label>Answer</label>
           <input type="text" id="qb-a-${f.row}" value="${f.correctAnswer}"
-            oninput="queueFlagQBEdit(${f.row},'${f.unit}','${f.question.replace(/'/g,"\'").replace(/
-/g,' ')}')"
+            data-flagrow="${f.row}" data-unit="${f.unit}"
+            oninput="queueFlagQBEditFromEl(this)"
             style="background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.7rem;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--ink);outline:none;width:100%">
         </div>
         <div style="display:flex;gap:0.5rem;align-items:center">
@@ -1999,6 +2000,20 @@ function toggleQBEdit(row) {
   el.style.display = isHidden ? 'flex' : 'none';
   el.style.flexDirection = 'column';
   if (btn) btn.style.color = isHidden ? 'var(--accent)' : '';
+}
+
+function queueFlagQBEditFromEl(el) {
+  const row = el.dataset.flagrow;
+  const unitName = el.dataset.unit || '';
+  // Get original question from the textarea sibling (stored as data attr when rendered)
+  const container = document.getElementById('qb-edit-' + row);
+  const origQ = container ? container.dataset.origQuestion || '' : '';
+  const newQ = document.getElementById('qb-q-' + row)?.value.trim();
+  const newA = document.getElementById('qb-a-' + row)?.value.trim();
+  qbEditQueue[row] = { row, unitName, originalQuestion: origQ, question: newQ, answer: newA };
+  const statusEl = document.getElementById('qb-status-' + row);
+  if (statusEl) { statusEl.textContent = '● Queued'; statusEl.style.color = 'var(--gold)'; }
+  updateQBQueueCount();
 }
 
 function queueFlagQBEdit(row, unitName, originalQuestion) {
@@ -2437,16 +2452,18 @@ function renderQBEditor(data) {
             <div style="display:flex;flex-direction:column;gap:0.4rem">
               <div style="display:flex;gap:0.5rem;align-items:center">
                 <span style="font-size:0.7rem;font-weight:600;text-transform:uppercase;color:var(--ink-muted);width:60px;flex-shrink:0">Question</span>
-                <input type="text" id="qb-q-edit-${q.row}" value="${(q.question || '').replace(/"/g,'&quot;')}"
-                  oninput="queueQBRowEdit(${q.row},'${q.tab}','Unit ${data.unit}','${(q.question||'').replace(/'/g,"\'").replace(/
-/g,' ')}')"
+                <input type="text" id="qb-q-edit-${q.row}"
+                  data-qbrow="${q.row}" data-qbtab="${q.tab}"
+                  value="${(q.question || '').replace(/"/g,'&quot;')}"
+                  oninput="queueQBRowEditFromEl(this)"
                   style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:0.35rem 0.6rem;font-family:'DM Sans',sans-serif;font-size:0.83rem;color:var(--ink);outline:none">
               </div>
               <div style="display:flex;gap:0.5rem;align-items:center">
                 <span style="font-size:0.7rem;font-weight:600;text-transform:uppercase;color:var(--ink-muted);width:60px;flex-shrink:0">Answer</span>
-                <input type="text" id="qb-a-edit-${q.row}" value="${(q.answer || '').replace(/"/g,'&quot;')}"
-                  oninput="queueQBRowEdit(${q.row},'${q.tab}','Unit ${data.unit}','${(q.question||'').replace(/'/g,"\'").replace(/
-/g,' ')}')"
+                <input type="text" id="qb-a-edit-${q.row}"
+                  data-qbrow="${q.row}" data-qbtab="${q.tab}"
+                  value="${(q.answer || '').replace(/"/g,'&quot;')}"
+                  oninput="queueQBRowEditFromEl(this)"
                   style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:0.35rem 0.6rem;font-family:'DM Mono',monospace;font-size:0.83rem;color:var(--accent);outline:none">
               </div>
               <div style="display:flex;gap:0.5rem;align-items:center;justify-content:flex-end">
@@ -2512,6 +2529,24 @@ async function batchSaveQBEdits() {
 }
 
 // Also hook QB Editor row inputs into the same queue
+function queueQBRowEditFromEl(el) {
+  const row = el.dataset.qbrow;
+  const tab = el.dataset.qbtab;
+  const newQ = document.getElementById('qb-q-edit-' + row)?.value || '';
+  const newA = document.getElementById('qb-a-edit-' + row)?.value || '';
+  // isDirectRow=true means we have row+tab already, no search needed
+  qbEditQueue[row] = { row, tab, question: newQ, answer: newA, isDirectRow: true };
+  const statusEl = document.getElementById('qb-save-status-' + row);
+  if (statusEl) { statusEl.textContent = '● Queued'; statusEl.style.color = 'var(--gold)'; }
+  const btn = document.getElementById('qb-save-all-btn');
+  const count = Object.keys(qbEditQueue).length;
+  if (btn) {
+    btn.textContent = count > 0 ? `Save All Changes (${count})` : 'Save All Changes';
+    btn.style.background = count > 0 ? 'var(--gold)' : '';
+    btn.style.color = count > 0 ? '#1a1510' : '';
+  }
+}
+
 function queueQBRowEdit(row, tab, unitName, originalQuestion) {
   const newQ = document.getElementById('qb-q-edit-' + row)?.value.trim();
   const newA = document.getElementById('qb-a-edit-' + row)?.value.trim();
@@ -2571,6 +2606,6 @@ async function saveQBInstruction(section, insRow, insTab) {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v1.3</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v1.5</div>
 </body>
 </html>

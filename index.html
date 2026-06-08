@@ -1373,7 +1373,7 @@ async function selectClass(cls) {
   showScreen('app-screen');
   showPanel('units');
   await Promise.all([loadRoster(), loadWeeks()]);
-  loadUnits();
+  await loadUnits();
 }
 
 function goSelectClass() {
@@ -1442,11 +1442,18 @@ async function loadUnits() {
   try {
     const data = await api({ action: 'getManagement' });
     mgmtData = data;
+    // If no week set in sheet, auto-detect from Quiz Data
+    if (!data.weekNum || String(data.weekNum) === '0' || String(data.weekNum) === '') {
+      try {
+        const w = await getCurrentWeek();
+        if (w) { data.weekNum = w; mgmtData.weekNum = w; }
+      } catch(e) { /* silent */ }
+    }
     renderUnitsTable(data);
     setTimeout(initStickyScrollbar, 100);
-    checkDuplicateUnits(data);
+    checkDuplicateUnits(mgmtData);
     isDirty = false;
-    document.getElementById('save-units-btn').textContent = 'Save Changes';
+    document.getElementById('save-units-btn').textContent = '⚡ Generate Quizzes';
   } catch(e) {
     toast('Failed to load units: ' + e.message, 'error');
   } finally {
@@ -1870,24 +1877,56 @@ async function loadPreview() {
   teacherFlagQueue = {};
   updatePreviewFlagBtn();
 
+  const weekOverride = document.getElementById('preview-week-select')?.value;
+
   setLoading(true);
   try {
-    const data = await api({ action: 'getQuizData', student: num });
-    previewQuestions = data.questions;
-    previewData = data;
-    previewData.studentResults = null;
-
-    // Also try to fetch submitted results
-    // Use selected week override if set, otherwise use quiz data week
-    try {
-      const weekOverride = document.getElementById('preview-week-select')?.value;
-      const week = weekOverride || data.week;
-      const results = await api({ action: 'getStudentResults', student: num, week });
-      if (results.found) {
-        previewData.studentResults = results.questions;
-        previewData.resultsWeek = week;
+    if (weekOverride) {
+      // Past week selected — load results directly from the Week XX sheet
+      // No quiz data available for past weeks, just show results
+      const results = await api({ action: 'getStudentResults', student: num, week: weekOverride });
+      if (!results.found) {
+        document.getElementById('preview-content').innerHTML =
+          `<div class="alert alert-warning">⚠️ No results found for this student in Week ${weekOverride}.</div>`;
+        previewQuestions = null;
+        previewData = null;
+        return;
       }
-    } catch(e) { /* not submitted yet — that's fine */ }
+      // Build previewData from results
+      previewData = {
+        studentNumber: num,
+        name: (rosterData || []).find(r => String(r.num) === String(num))?.eng || num,
+        week: weekOverride,
+        studentResults: results.questions,
+        resultsWeek: weekOverride,
+        // Reconstruct questions from results for quiz view
+        questions: results.questions.map(q => ({
+          ...q,
+          answer: q.correctAnswer,
+          blankIndex: null,
+          isExample: false,
+          number: q.number || 0
+        }))
+      };
+      previewQuestions = previewData.questions;
+      // Force answer view since we have results
+      setPreviewMode('answers');
+    } else {
+      // Current week — load quiz data as normal
+      const data = await api({ action: 'getQuizData', student: num });
+      previewQuestions = data.questions;
+      previewData = data;
+      previewData.studentResults = null;
+
+      // Try to fetch submitted results for current week
+      try {
+        const results = await api({ action: 'getStudentResults', student: num, week: data.week });
+        if (results.found) {
+          previewData.studentResults = results.questions;
+          previewData.resultsWeek = data.week;
+        }
+      } catch(e) { /* not submitted yet */ }
+    }
 
     renderPreview();
   } catch(e) {
@@ -3037,12 +3076,12 @@ async function downloadGradingPDF() {
     showScreen('app-screen');
     showPanel('units');
     await Promise.all([loadRoster(), loadWeeks()]);
-    loadUnits();
+    await loadUnits();
   } else if (authToken) {
     showScreen('class-select-screen');
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v3.6</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v3.7</div>
 </body>
 </html>

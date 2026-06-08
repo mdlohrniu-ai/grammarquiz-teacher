@@ -1140,6 +1140,12 @@ body {
             <option value="">— Select a student —</option>
           </select>
         </div>
+        <div style="display:flex;align-items:center;gap:0.4rem">
+          <span style="font-size:0.82rem;color:var(--ink-soft)">Week:</span>
+          <select class="field" id="preview-week-select" onchange="loadPreview()" style="margin:0;width:100px">
+            <option value="">Current</option>
+          </select>
+        </div>
         <div class="preview-mode-toggle">
           <button class="preview-mode-btn active" id="preview-mode-quiz" onclick="setPreviewMode('quiz')">Quiz view</button>
           <button class="preview-mode-btn" id="preview-mode-answers" onclick="setPreviewMode('answers')">Answer view</button>
@@ -1383,10 +1389,12 @@ function showPanel(name) {
     const btn = document.getElementById('nav-' + p);
     if (btn) btn.classList.toggle('active', p === name);
   });
-  // Clear grades content when leaving grades to prevent stale warnings
+  // Clear grades content when leaving grades to prevent bleed-through
   if (name !== 'grades') {
     const gc = document.getElementById('grades-content');
-    if (gc && !gradesData) gc.innerHTML = '';
+    if (gc) gc.innerHTML = '';
+    gradesData = null;
+    currentWeekCache = null;
   }
   // Show/hide fixed scrollbar
   const fixedBar = document.getElementById('fixed-scroll-bar');
@@ -1818,7 +1826,7 @@ async function doResetControl() {
 let previewMode = 'quiz';
 let previewQuestions = null;
 
-function loadPreviewStudentList() {
+async function loadPreviewStudentList() {
   const sel = document.getElementById('preview-student-select');
   const cur = sel.value;
   sel.innerHTML = '<option value="">— Select a student —</option>';
@@ -1829,6 +1837,23 @@ function loadPreviewStudentList() {
     if (String(s.num) === String(cur)) opt.selected = true;
     sel.appendChild(opt);
   });
+
+  // Populate week selector from available weeks
+  const weekSel = document.getElementById('preview-week-select');
+  if (weekSel) {
+    const curWeek = weekSel.value;
+    weekSel.innerHTML = '<option value="">Current</option>';
+    try {
+      const data = await api({ action: 'getWeeks' });
+      (data.weeks || []).forEach(w => {
+        const opt = document.createElement('option');
+        opt.value = w;
+        opt.textContent = 'Week ' + w;
+        if (String(w) === String(curWeek)) opt.selected = true;
+        weekSel.appendChild(opt);
+      });
+    } catch(e) { /* silent */ }
+  }
 }
 
 async function loadPreview() {
@@ -1852,11 +1877,16 @@ async function loadPreview() {
     previewData = data;
     previewData.studentResults = null;
 
-    // Also try to fetch submitted results if quiz has been taken
+    // Also try to fetch submitted results
+    // Use selected week override if set, otherwise use quiz data week
     try {
-      const week = data.week;
+      const weekOverride = document.getElementById('preview-week-select')?.value;
+      const week = weekOverride || data.week;
       const results = await api({ action: 'getStudentResults', student: num, week });
-      if (results.found) previewData.studentResults = results.questions;
+      if (results.found) {
+        previewData.studentResults = results.questions;
+        previewData.resultsWeek = week;
+      }
     } catch(e) { /* not submitted yet — that's fine */ }
 
     renderPreview();
@@ -1957,8 +1987,9 @@ function renderPreview() {
   const showAnswers = previewMode === 'answers';
   const badge = document.getElementById('preview-results-badge');
   if (badge) {
+    const weekLabel = previewData.resultsWeek ? ' (Week ' + previewData.resultsWeek + ')' : '';
     badge.textContent = previewData.studentResults
-      ? '✓ Submitted — showing student answers'
+      ? '✓ Submitted' + weekLabel + ' — showing student answers'
       : 'Not yet submitted — showing correct answers';
     badge.style.color = previewData.studentResults ? 'var(--green)' : 'var(--ink-muted)';
   }
@@ -3012,6 +3043,6 @@ async function downloadGradingPDF() {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v3.5</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v3.6</div>
 </body>
 </html>

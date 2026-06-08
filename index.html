@@ -2145,7 +2145,7 @@ function renderPreview() {
           const bgColor = resRow.result === 'correct' ? '#e6f4ec' : resRow.result === 'half' ? '#fef6e4' : '#faeaea';
           const borderColor = resRow.result === 'correct' ? '#a3d4b8' : resRow.result === 'half' ? '#f0d080' : '#f0b0b0';
           const ansColor = resRow.result === 'correct' ? '#2d7a4f' : resRow.result === 'half' ? '#b87a00' : '#b83232';
-          const qKey2 = btoa(encodeURIComponent((resRow.question||'') + (resRow.studentAnswer||''))).slice(0,12);
+          const qKey2 = 'q' + (resRow.number || i) + '_s';
           const sNum2 = previewData?.studentNumber || '';
           const sName2 = previewData?.name || '';
           const wk2 = previewData?.week || '';
@@ -2187,7 +2187,7 @@ function renderStudentAnswerBoxes(resultRows, double) {
     const bgColor = r.result === 'correct' ? '#e6f4ec' : r.result === 'half' ? '#fef6e4' : '#faeaea';
     const borderColor = r.result === 'correct' ? '#a3d4b8' : r.result === 'half' ? '#f0d080' : '#f0b0b0';
     const ansColor = r.result === 'correct' ? '#2d7a4f' : r.result === 'half' ? '#b87a00' : '#b83232';
-    const qKey = btoa(encodeURIComponent((r.question||'') + (r.studentAnswer||'') + idx)).slice(0,12);
+    const qKey = 'q' + (r.number || idx) + '_' + idx;
     const isFlagged = r.flagged;
     return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
       ${double ? `<span style="font-weight:600;color:#2a5c8a">${markers[idx]}</span>` : ''}
@@ -3092,6 +3092,6 @@ async function downloadGradingPDF() {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v3.8</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v3.9</div>
 </body>
 </html>

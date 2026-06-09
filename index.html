@@ -2935,7 +2935,13 @@ async function batchSaveQBEdits() {
       saved++;
     } catch(e) { failed++; }
   }
+  // Clear all successfully saved edits and reset button
+  qbEditQueue = {};
   updateQBQueueCount();
+  // Reset status labels on saved rows
+  document.querySelectorAll('[id^="qb-save-status-"]').forEach(el => {
+    if (el.textContent === '● Queued') el.textContent = '';
+  });
   setLoading(false);
   toast(`Saved ${saved} QB edit(s)${failed > 0 ? ` · ${failed} failed` : ''}`, saved > 0 ? 'success' : 'error');
 }
@@ -3092,6 +3098,6 @@ async function downloadGradingPDF() {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v3.9</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v4.0</div>
 </body>
 </html>

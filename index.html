@@ -1391,6 +1391,7 @@ function showPanel(name) {
     const btn = document.getElementById('nav-' + p);
     if (btn) btn.classList.toggle('active', p === name);
   });
+  window.scrollTo(0, 0);
   // Clear grades content when leaving grades to prevent bleed-through
   if (name !== 'grades') {
     const gc = document.getElementById('grades-content');

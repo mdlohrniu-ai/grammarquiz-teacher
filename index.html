@@ -1276,7 +1276,14 @@ function showScreen(id) {
   });
   const el = document.getElementById(id);
   el.classList.add('active');
-  el.style.display = '';
+  // Restore appropriate display type based on screen type
+  if (id === 'app-screen') {
+    el.style.display = 'flex';
+  } else if (id === 'class-select-screen' || id === 'login-screen') {
+    el.style.display = 'flex';
+  } else {
+    el.style.display = 'block';
+  }
   window.scrollTo(0, 0);
 }
 
@@ -1336,15 +1343,12 @@ async function doLogin() {
   try {
     const params = new URLSearchParams({ action: 'loginGet', username, password });
     const data = await xhrGet(API + '?' + params.toString());
-    console.log('Login response:', JSON.stringify(data));
-    console.log('data.ok:', data.ok, 'token:', data.token);
     if (!data.ok) throw new Error(data.error || 'Login failed');
 
     authToken = data.token;
     authUser  = data.username;
     sessionStorage.setItem('tp_token', authToken);
     sessionStorage.setItem('tp_user',  authUser);
-    console.log('Showing class select screen');
     showScreen('class-select-screen');
   } catch(e) {
     errEl.textContent = e.message;
@@ -3096,6 +3100,6 @@ async function downloadGradingPDF() {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v4.2</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v4.3</div>
 </body>
 </html>

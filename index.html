@@ -1211,6 +1211,7 @@ body {
               <input type="number" id="w-quizrev" value="20" min="0" max="100" style="width:50px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:0.25rem 0.4rem;font-size:0.82rem;color:var(--accent);text-align:center;outline:none">
             </label>
           </div>
+        </div>
         <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="toggleAllGradesHW(true)">✓ Check all HW</button>
           <button class="btn btn-ghost btn-sm" onclick="toggleAllGradesHW(false)">✗ Uncheck all HW</button>
@@ -1226,7 +1227,6 @@ body {
 
     <!-- ── QB EDITOR PANEL ────────────────────────────────────────────────── -->
     <div id="panel-qb" style="display:none">
-
       <div class="panel-header">
         <div>
           <div class="panel-title">QB Editor</div>
@@ -1391,7 +1391,6 @@ function showPanel(name) {
     const btn = document.getElementById('nav-' + p);
     if (btn) btn.classList.toggle('active', p === name);
   });
-  window.scrollTo(0, 0);
   // Clear grades content when leaving grades to prevent bleed-through
   if (name !== 'grades') {
     const gc = document.getElementById('grades-content');
@@ -1906,20 +1905,28 @@ async function loadPreview() {
         return;
       }
       // Build previewData from results
+      // Reconstruct blankIndex by detecting consecutive questions with the same sentence
+      const reconstructedQs = results.questions.map((q, idx, arr) => {
+        let blankIndex = null;
+        const prev = arr[idx - 1];
+        const next = arr[idx + 1];
+        if (next && next.question === q.question) blankIndex = 0;
+        else if (prev && prev.question === q.question) blankIndex = 1;
+        return {
+          ...q,
+          answer: q.correctAnswer,
+          blankIndex: blankIndex,
+          isExample: false,
+          number: q.number || 0
+        };
+      });
       previewData = {
         studentNumber: num,
         name: (rosterData || []).find(r => String(r.num) === String(num))?.eng || num,
         week: weekOverride,
         studentResults: results.questions,
         resultsWeek: weekOverride,
-        // Reconstruct questions from results for quiz view
-        questions: results.questions.map(q => ({
-          ...q,
-          answer: q.correctAnswer,
-          blankIndex: null,
-          isExample: false,
-          number: q.number || 0
-        }))
+        questions: reconstructedQs
       };
       previewQuestions = previewData.questions;
       // Force answer view since we have results
@@ -3101,6 +3108,6 @@ async function downloadGradingPDF() {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v4.5</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v4.4</div>
 </body>
 </html>

@@ -1108,6 +1108,7 @@ body {
           <button class="btn btn-success" onclick="doStartQuiz()" id="start-quiz-btn">▶ Start Quiz</button>
           <button class="btn btn-danger"  onclick="doStopQuiz()"  id="stop-quiz-btn">⏹ Force End</button>
           <button class="btn btn-ghost btn-sm" onclick="doResetControl()" id="reset-ctrl-btn">↺ Reset</button>
+          <button class="btn btn-ghost btn-sm" onclick="doClearSubmitted()" id="clear-submitted-btn" style="color:var(--red);border-color:rgba(184,50,50,0.35)">🧹 Clear Submitted</button>
         </div>
       </div>
 
@@ -1830,6 +1831,20 @@ async function doResetControl() {
   try {
     await api({}, 'POST', { action: 'resetTestControl' });
     toast('Test Control reset', 'success');
+    await loadTestControl();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function doClearSubmitted() {
+  if (!confirm('Clear the Submitted sheet? This allows ALL students to retake the quiz. Only do this before starting a new week.')) return;
+  setLoading(true);
+  try {
+    await api({}, 'POST', { action: 'clearSubmitted' });
+    toast('Submitted sheet cleared', 'success');
     await loadTestControl();
   } catch(e) {
     toast('Error: ' + e.message, 'error');
@@ -3108,6 +3123,6 @@ async function downloadGradingPDF() {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v4.4</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v4.7</div>
 </body>
 </html>

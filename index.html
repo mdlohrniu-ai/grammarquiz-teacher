@@ -990,6 +990,9 @@ body {
       <div class="class-card" onclick="selectClass('EWSI')">
         <div class="class-card-label">EWS I</div>
       </div>
+      <div class="class-card" onclick="selectClass('EWSII')">
+        <div class="class-card-label">EWS II</div>
+      </div>
       <div class="class-card" onclick="selectClass('EWSIII')">
         <div class="class-card-label">EWS III</div>
       </div>
@@ -1372,7 +1375,7 @@ async function selectClass(cls) {
   currentWeekCache = null; // reset so it re-fetches for new class
   sessionStorage.setItem('tp_class', cls);
   document.getElementById('class-badge').textContent =
-    cls === 'EWSI' ? 'EWS I' : 'EWS III';
+    cls === 'EWSI' ? 'EWS I' : cls === 'EWSII' ? 'EWS II' : 'EWS III';
   showScreen('app-screen');
   showPanel('units');
   await Promise.all([loadRoster(), loadWeeks()]);
@@ -3113,7 +3116,7 @@ async function downloadGradingPDF() {
 (async function init() {
   if (authToken && currentClass) {
     document.getElementById('class-badge').textContent =
-      currentClass === 'EWSI' ? 'EWS I' : 'EWS III';
+      currentClass === 'EWSI' ? 'EWS I' : currentClass === 'EWSII' ? 'EWS II' : 'EWS III';
     showScreen('app-screen');
     showPanel('units');
     await Promise.all([loadRoster(), loadWeeks()]);
@@ -3123,6 +3126,6 @@ async function downloadGradingPDF() {
   }
 })();
 </script>
-<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v4.7</div>
+<div style="position:fixed;bottom:0.5rem;right:0.75rem;font-size:0.65rem;color:var(--ink-muted);font-family:'DM Mono',monospace;pointer-events:none;letter-spacing:0.05em">v4.8</div>
 </body>
 </html>
